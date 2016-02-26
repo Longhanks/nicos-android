@@ -14,7 +14,31 @@
     tools:context="de.tum.frm2.nicos_android.MainActivity">
 
     <TextView
-        android:text="Hello World!"
+        android:text="Not connected."
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        android:id="@+id/textView"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true" />
+
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@+id/textView"
+        android:baselineAligned="false">
+
+        <ListView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/listViewKeys"
+            android:layout_weight="1" />
+
+        <ListView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:id="@+id/listViewValues"
+            android:layout_weight="1" />
+    </LinearLayout>
 </RelativeLayout>
