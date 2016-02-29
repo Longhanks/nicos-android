@@ -5,5 +5,4 @@ package de.tum.frm2.nicos_android;
  */
 public class NicosClientMessages {
     final static int CONNECTION_SUCCESSFUL = 0;
-    final static int BANNER_DICTIONARY_DATA = 1;
 }

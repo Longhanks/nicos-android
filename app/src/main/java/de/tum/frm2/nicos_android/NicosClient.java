@@ -28,6 +28,7 @@ public class NicosClient {
     private OutputStream socketOut;
     private InputStream socketIn;
     private Handler callbackHandler;
+    private HashMap nicosBanner;
 
     public NicosClient(Handler callbackHandler, final ConnectionData conndata) {
         this.callbackHandler = callbackHandler;
@@ -88,9 +89,7 @@ public class NicosClient {
 
         // read banner
         TupleOfTwo<Byte, Object> response = _read();
-        HashMap dict = (HashMap) response.getSecond();
-        Message msg = callbackHandler.obtainMessage(NicosClientMessages.BANNER_DICTIONARY_DATA, dict);
-        msg.sendToTarget();
+        nicosBanner = (HashMap) response.getSecond();
     }
 
     public TupleOfTwo<Byte, Object> _read() {
@@ -130,6 +129,10 @@ public class NicosClient {
         }
 
         return new TupleOfTwo<Byte, Object>(start[0], result);
+    }
+
+    public HashMap getNicosBanner() {
+        return nicosBanner;
     }
 
     public String getUniqueID() {

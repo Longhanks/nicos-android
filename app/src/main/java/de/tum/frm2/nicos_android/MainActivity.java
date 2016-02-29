@@ -1,22 +1,33 @@
 package de.tum.frm2.nicos_android;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
+    public final static String MESSAGE_CONNECTION_INFO =
+            "de.tum.frm2.nicos_android.MESSAGE_CONNECTION_INFO";
+    private NicosClient client;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -25,7 +36,7 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         char[] password = {};
         ConnectionData conndata = new ConnectionData("172.25.2.7", 1301, "guest", password, false);
-        NicosClient client = new NicosClient(new NicosHandler(this), conndata);
+        client = new NicosClient(new NicosHandler(this), conndata);
     }
 
     @Override
@@ -42,8 +53,33 @@ public class MainActivity extends AppCompatActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+            AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
+            alertDialog.setTitle("Not yet implemented");
+            alertDialog.setMessage("The settings dialog wasn't implemented yet.");
+            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Okay",
+                    new DialogInterface.OnClickListener() {
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+            int version = Build.VERSION.SDK_INT;
+            int color;
+            if (version >= 23) {
+                color = ContextCompat.getColor(this, R.color.colorPrimary);
+            }
+            else {
+                color = getResources().getColor(R.color.colorPrimary);
+            }
+            alertDialog.show();
+            alertDialog.getButton(alertDialog.BUTTON_NEUTRAL).setTextColor(color);
+            return true;
+        }
+
+        if (id == R.id.action_connection_info) {
+            Intent intent = new Intent(this, ConnectionInfoActivity.class);
+            intent.putExtra(MESSAGE_CONNECTION_INFO, client.getNicosBanner());
+            startActivity(intent);
             return true;
         }
 
@@ -69,24 +105,6 @@ public class MainActivity extends AppCompatActivity {
                 case NicosClientMessages.CONNECTION_SUCCESSFUL:
                     TextView textView = (TextView) content_main.findViewById(R.id.textView);
                     textView.setText((String) inputMessage.obj);
-                    break;
-
-                case NicosClientMessages.BANNER_DICTIONARY_DATA:
-                    HashMap dict = (HashMap) inputMessage.obj;
-                    ArrayList<String> listKeys = new ArrayList<String>();
-                    ArrayList<String> listValues = new ArrayList<String>();
-                    for (Object key : dict.keySet()) {
-                        listKeys.add((String) key);
-                        listValues.add(dict.get(key).toString());
-                    }
-                    ListView listViewKeys = (ListView) content_main.findViewById(R.id.listViewKeys);
-                    ListView listViewValues = (ListView) content_main.findViewById(R.id.listViewValues);
-                    ArrayAdapter<String> adapterListKeys = new ArrayAdapter<String>(
-                            mainActivity, android.R.layout.simple_list_item_1, listKeys);
-                    ArrayAdapter<String> adapterListValues = new ArrayAdapter<String>(
-                            mainActivity, android.R.layout.simple_list_item_1, listValues);
-                    listViewKeys.setAdapter(adapterListKeys);
-                    listViewValues.setAdapter(adapterListValues);
                     break;
             }
         }
