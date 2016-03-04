@@ -13,15 +13,9 @@ import android.support.v7.widget.Toolbar;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.ListView;
-import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
 import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
     public final static String MESSAGE_CONNECTION_INFO =
@@ -34,8 +28,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        char[] password = {};
-        ConnectionData conndata = new ConnectionData("172.25.2.7", 1301, "guest", password, false);
+        char[] password = "admin".toCharArray();
+        ConnectionData conndata = new ConnectionData("172.25.2.7", 1301, "admin", password, false);
         client = new NicosClient(new NicosHandler(this), conndata);
     }
 
@@ -101,9 +95,15 @@ public class MainActivity extends AppCompatActivity {
             }
 
             View content_main = mainActivity.findViewById(R.id.content_main);
+            TextView textView = (TextView) content_main.findViewById(R.id.textView);
+
             switch (inputMessage.what) {
+                // Seems redundant for now.
+                // However, messages are different and in future, reactions may differ.
                 case NicosClientMessages.CONNECTION_SUCCESSFUL:
-                    TextView textView = (TextView) content_main.findViewById(R.id.textView);
+                    textView.setText((String) inputMessage.obj);
+                    break;
+                case NicosClientMessages.LOGIN_SUCCESSFUL:
                     textView.setText((String) inputMessage.obj);
                     break;
             }
