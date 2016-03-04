@@ -5,6 +5,7 @@ import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
@@ -24,6 +25,12 @@ public class ConnectionInfoActivity extends AppCompatActivity {
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        toolbar.setNavigationOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onBackPressed();
+            }
+        });
 
         HashMap connectionInfo = (HashMap) getIntent().getSerializableExtra(
                 MainActivity.MESSAGE_DAEMON_INFO);
@@ -45,5 +52,4 @@ public class ConnectionInfoActivity extends AppCompatActivity {
                 new int[] {android.R.id.text1, android.R.id.text2});
         listView.setAdapter(adapter);
     }
-
 }
