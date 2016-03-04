@@ -4,4 +4,13 @@
     <string name="action_connection_info">Connection info</string>
     <string name="no_connection">Not connected.</string>
     <string name="title_activity_connection_info">Connection Info</string>
+    <string name="title_activity_login">Connect to a NICOS daemon</string>
+
+    <!-- Strings related to login -->
+    <string name="prompt_username">User name</string>
+    <string name="prompt_password">Password</string>
+    <string name="prompt_hostname">Hostname</string>
+    <string name="prompt_port">Port</string>
+    <string name="action_sign_in">Login</string>
+    <string name="error_field_required">Must not be empty</string>
 </resources>

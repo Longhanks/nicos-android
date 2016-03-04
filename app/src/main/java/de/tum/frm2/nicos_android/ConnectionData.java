@@ -1,7 +1,9 @@
 package de.tum.frm2.nicos_android;
 
 
-public class ConnectionData {
+import java.io.Serializable;
+
+public class ConnectionData implements Serializable {
     private String host;
     private int port;
     private String user;

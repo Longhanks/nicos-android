@@ -45,29 +45,37 @@ import javax.crypto.NoSuchPaddingException;
 
 public class NicosClient {
     // Resembles nicos-core/nicos/clients/base.py
-    private Socket socket;
+    private static NicosClient client;
+    private Socket socket = null;
     private OutputStream socketOut;
     private InputStream socketIn;
-    private Handler callbackHandler;
     private HashMap nicosBanner;
     private int user_level;
 
-    public NicosClient(Handler callbackHandler, final ConnectionData conndata) {
+    private NicosClient() {
         Security.insertProviderAt(new org.spongycastle.jce.provider.BouncyCastleProvider(), 1);
-        this.callbackHandler = callbackHandler;
-        // Android forbids networking in main thread. That's why a thread gets started here.
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                connect(conndata);
-            }
-        }).start();
     }
 
-    public void connect(ConnectionData conndata) {
+    public static NicosClient getClient() {
+        if (client == null) {
+            client = new NicosClient();
+        }
+        return client;
+    }
+
+    public void disconnect() {
         try {
-            InetAddress addr = InetAddress.getByName(conndata.getHost());
-            SocketAddress sockaddr = new InetSocketAddress(addr, conndata.getPort());
+            socket.close();
+        }
+        catch (Exception e) {
+            // Socket already disconnected.
+        }
+    }
+
+    public void connect(ConnectionData connData) throws RuntimeException {
+        try {
+            InetAddress addr = InetAddress.getByName(connData.getHost());
+            SocketAddress sockaddr = new InetSocketAddress(addr, connData.getPort());
 
             // Initialize empty socket.
             socket = new Socket();
@@ -76,22 +84,19 @@ public class NicosClient {
             // Connects this socket to the server with a specified timeout value
             // If timeout occurs, SocketTimeoutException is thrown
             socket.connect(sockaddr, timeout);
-            Message msg = callbackHandler.obtainMessage(NicosClientMessages.CONNECTION_SUCCESSFUL,
-                                                        "Connected to: " + conndata.getHost());
-            msg.sendToTarget();
         }
         catch (UnknownHostException e) {
-            System.out.println("Host not found: " + e.getMessage());
+            throw new RuntimeException("Host not found.");
         }
         catch (IOException ioe) {
-            System.out.println("I/O Error: " + ioe.getMessage());
+            throw new RuntimeException("I/O Error: " + ioe.getMessage());
         }
 
         try {
             socketOut = socket.getOutputStream();
             socketIn = socket.getInputStream();
         } catch (IOException e) {
-            System.out.println("I/O Error: " + e.getMessage());
+            throw new RuntimeException("I/O Error: " + e.getMessage());
         }
 
         MessageDigest digest = null;
@@ -108,7 +113,7 @@ public class NicosClient {
             socketOut.flush();
         }
         catch (IOException e) {
-            System.out.println("I/O Error: " + e.getMessage());
+            throw new RuntimeException("I/O Error: " + e.getMessage());
         }
 
         // read banner
@@ -117,7 +122,7 @@ public class NicosClient {
         nicosBanner = (HashMap) response.getSecond();
 
         // log-in sequence
-        char[] password = conndata.getPassword();
+        char[] password = connData.getPassword();
         Object unwrap = nicosBanner.get("pw_hashing");
         String pw_hashing = "sha1";
         if (unwrap != null) {
@@ -145,13 +150,13 @@ public class NicosClient {
             } catch (NoSuchAlgorithmException |
                      NoSuchProviderException  |
                      NoSuchPaddingException e) {
-                System.out.println("Cipher doesn't exist.");
+                // Cannot happen.
             }
             try {
                 cipher.init(Cipher.ENCRYPT_MODE, publicKey);
             }
             catch (InvalidKeyException e) {
-                System.out.println("Invalid public key!");
+                throw new RuntimeException("The server's RSA key is invalid or incompatible.");
             }
 
             byte[] encrypted;
@@ -175,7 +180,7 @@ public class NicosClient {
         }
 
         HashMap<String, String> credentials = new HashMap<String, String>();
-        credentials.put("login", conndata.getUser());
+        credentials.put("login", connData.getUser());
         credentials.put("passwd", encryptedPassword);
         credentials.put("display", "");
 
@@ -183,16 +188,15 @@ public class NicosClient {
         // e.g. python: payload = (credentials,)
         // Pyrolite library matches java.lang.Object arrays to tuples with the array's length.
         Object[] data = {credentials};
+        Object untypedAuthResponse = ask("authenticate", data);
+        if (untypedAuthResponse.getClass() == String.class) {
+            // Credentials not accepted.
+            throw new RuntimeException("Server didn't accept username/password.");
+        }
 
-        HashMap authResponse = (HashMap) ask("authenticate", data);
+        // Login was successful.
+        HashMap authResponse = (HashMap) untypedAuthResponse;
         user_level = (int) authResponse.get("user_level");
-
-        Message msg = callbackHandler.obtainMessage(NicosClientMessages.LOGIN_SUCCESSFUL,
-                String.format("Connected to: %s@%s, user_level: %s",
-                        conndata.getUser(),
-                        conndata.getHost(),
-                        String.valueOf(user_level)));
-        msg.sendToTarget();
     }
 
     public Object ask(String command, Object args) {
@@ -321,6 +325,10 @@ public class NicosClient {
 
     public HashMap getNicosBanner() {
         return nicosBanner;
+    }
+
+    public int getUserLevel() {
+        return user_level;
     }
 
     public String getUniqueID() {

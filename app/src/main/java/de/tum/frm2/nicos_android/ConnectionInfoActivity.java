@@ -26,7 +26,7 @@ public class ConnectionInfoActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         HashMap connectionInfo = (HashMap) getIntent().getSerializableExtra(
-                MainActivity.MESSAGE_CONNECTION_INFO);
+                MainActivity.MESSAGE_DAEMON_INFO);
 
         // Android quirks...
         List<Map<String, String>> data = new ArrayList<Map<String, String>>();
