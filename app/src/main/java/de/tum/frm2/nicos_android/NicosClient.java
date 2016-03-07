@@ -51,6 +51,9 @@ public class NicosClient {
     private InputStream socketIn;
     private HashMap nicosBanner;
     private int user_level;
+    private Socket eventSocket = null;
+    private OutputStream eventSocketOut;
+    private InputStream eventSocketIn;
 
     private NicosClient() {
         Security.insertProviderAt(new org.spongycastle.jce.provider.BouncyCastleProvider(), 1);
@@ -66,6 +69,7 @@ public class NicosClient {
     public void disconnect() {
         try {
             socket.close();
+            eventSocket.close();
         }
         catch (Exception e) {
             // Socket already disconnected.
@@ -73,9 +77,10 @@ public class NicosClient {
     }
 
     public void connect(ConnectionData connData) throws RuntimeException {
+        SocketAddress sockaddr;
         try {
             InetAddress addr = InetAddress.getByName(connData.getHost());
-            SocketAddress sockaddr = new InetSocketAddress(addr, connData.getPort());
+            sockaddr = new InetSocketAddress(addr, connData.getPort());
 
             // Initialize empty socket.
             socket = new Socket();
@@ -197,6 +202,74 @@ public class NicosClient {
         // Login was successful.
         HashMap authResponse = (HashMap) untypedAuthResponse;
         user_level = (int) authResponse.get("user_level");
+
+        // connect to event port
+        try {
+            eventSocket.connect(sockaddr);
+            eventSocketOut = eventSocket.getOutputStream();
+            eventSocketIn = eventSocket.getInputStream();
+            eventSocketOut.write(client_id);
+            eventSocketOut.flush();
+        } catch (IOException e) {
+            throw new RuntimeException("I/O Error: " + e.getMessage());
+        }
+
+        // Start event handler
+        final Thread event_thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                // equals event_handler.
+                event_handler();
+            }
+        });
+        event_thread.start();
+    }
+
+    public void event_handler() {
+        while (true) {
+            // receive STX (1 byte) + eventcode (2) + length (4)
+            byte[] start = new byte[7];
+            try {
+                eventSocketIn.read(start);
+            }
+            catch (IOException e) {
+                System.out.println("I/O Error: " + e.getMessage());
+            }
+            byte[] slice = Arrays.copyOfRange(start, 3, 7);
+            ByteBuffer bb = ByteBuffer.wrap(slice);
+            bb.order(ByteOrder.BIG_ENDIAN);
+            int length = bb.getInt();
+
+            // Stackoverflow magic to convert 2 bytes to int which can be compared in daemon events.
+            int eventcode = ((start[1] & 0xff) << 8) | (start[2] & 0x00ff);
+            String event = daemon.command2event(eventcode);
+
+            ByteArrayOutputStream buf = new ByteArrayOutputStream();
+            while (buf.size() < length) {
+                byte[] read = new byte[8192];
+                try {
+                    eventSocketIn.read(read);
+                    buf.write(read);
+                } catch (IOException e) {
+                    System.out.println("I/O Error: " + e.getMessage());
+                }
+            }
+            if (event.equals("cache")) {
+                Unpickler unpickler = new Unpickler();
+                Object result = null;
+                try {
+                    result = unpickler.loads(buf.toByteArray());
+                    Object[] tuple = (Object[]) result;
+                    System.out.println("cache event: " +
+                            (String) tuple[1] + (String) tuple[2] + (String) tuple[3]);
+                } catch (IOException e) {
+                    System.out.println("I/O Error: " + e.getMessage());
+                }
+            }
+            else {
+                System.out.println("Other event: " + event);
+            }
+        }
     }
 
     public Object ask(String command, Object args) {
@@ -337,23 +410,5 @@ public class NicosClient {
         long twoDigitsAfterComma = (millis - seconds * 1000l) / 10;
         String time = String.valueOf(seconds) + "." + String.valueOf(twoDigitsAfterComma);
         return time + String.valueOf(android.os.Process.myPid());
-    }
-}
-
-class TupleOfTwo<T1, T2> {
-    private T1 t1;
-    private T2 t2;
-
-    public TupleOfTwo(T1 t1, T2 t2) {
-        this.t1 = t1;
-        this.t2 = t2;
-    }
-
-    public T1 getFirst() {
-        return t1;
-    }
-
-    public T2 getSecond() {
-        return t2;
     }
 }
