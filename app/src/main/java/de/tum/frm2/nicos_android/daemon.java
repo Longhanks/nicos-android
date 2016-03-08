@@ -4,9 +4,18 @@ package de.tum.frm2.nicos_android;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 public class daemon {
+    // Resembles nicos-core/nicos/clients/base.py
+    // It's STRONGLY recommended to look at the Python source when concerned about the
+    // functionality of this class.
+
+    // protocol version
+    public static final int PROTO_VERSION = 13;
+
     public static final byte ENQ = 0x05;
     public static final byte ACK = 0x06;
     public static final byte NAK = 0x15;
@@ -137,4 +146,17 @@ public class daemon {
     public static boolean eventNeedsUnserialize(String event) {
         return command2event.get(event).getFirst();
     }
+
+    public static final Set<String> ACTIVE_COMMANDS = Collections.unmodifiableSet(
+            new HashSet<String>() {{
+                add("start");
+                add("queue");
+                add("unqueue");
+                add("update");
+                add("break");
+                add("continue");
+                add("stop");
+                add("exec");
+            }}
+    );
 }

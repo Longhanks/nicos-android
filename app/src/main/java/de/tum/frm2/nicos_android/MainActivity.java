@@ -13,7 +13,7 @@ import android.view.MenuItem;
 import android.widget.TextView;
 
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements NicosCallbackHandler {
     public final static String MESSAGE_DAEMON_INFO =
             "de.tum.frm2.nicos_android.MESSAGE_DAEMON_INFO";
 
@@ -32,6 +32,8 @@ public class MainActivity extends AppCompatActivity {
                 connData.getHost(),
                 String.valueOf(NicosClient.getClient().getUserLevel()));
         textView.setText(connectionString);
+
+        NicosClient.getClient().registerCallbackHandler(this);
     }
 
     @Override
@@ -79,5 +81,57 @@ public class MainActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onBackPressed() {
+        NicosClient.getClient().unregisterCallbackHandler(this);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                NicosClient.getClient().disconnect();
+            }
+        }).start();
+        super.onBackPressed();
+    }
+
+    @Override
+    public void handleSignal(String signal, Object data, Object args) {
+        if (signal.equals("broken")) {
+            final String error = (String) data;
+            // Connection is broken. Try to disconnect what's left and go back to login screen.
+            NicosClient.getClient().unregisterCallbackHandler(this);
+            NicosClient.getClient().disconnect();
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        AlertDialog alertDialog =
+                                new AlertDialog.Builder(MainActivity.this).create();
+                        alertDialog.setTitle("Disconnected");
+                        alertDialog.setMessage(error);
+                        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Okay",
+                                new DialogInterface.OnClickListener() {
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.dismiss();
+                                        finish();
+                                    }
+                                });
+                        alertDialog.show();
+                    }
+                    catch (Exception e) {
+                        try {
+                            finish();
+                        }
+                        catch (Exception e2) {
+                            // User probably quit the application.
+                        }
+                        // Activity isn't running anymore
+                        // (user probably put application in background).
+                    }
+                }
+            });
+        }
+        // Should at one point also implement GUI display of events.
     }
 }

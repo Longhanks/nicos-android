@@ -198,6 +198,27 @@ public class LoginActivity extends AppCompatActivity {
 
     // AsyncTask is an Android construct which can a common Java Thread in simple situations.
     public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
+
+        // A class that listens to errors from the NicosClients, to retrieve why connecting
+        // might have failed.
+        public class LastSignalErrorStore implements NicosCallbackHandler {
+            private String lastErrorMessage;
+
+            @Override
+            public void handleSignal(String signal, Object data, Object args) {
+                try {
+                    lastErrorMessage = (String) data;
+                }
+                catch (Exception e) {
+                    // There probably wasn't any error.
+                }
+            }
+
+            public String getLastErrorMessage() {
+                return lastErrorMessage;
+            }
+        }
+
         private LoginActivity loginActivity;
         private final ConnectionData connData;
         // If an error occurred, this String contains the error message.
@@ -210,16 +231,20 @@ public class LoginActivity extends AppCompatActivity {
 
         @Override
         protected Boolean doInBackground(Void... params) {
+            LastSignalErrorStore store = new LastSignalErrorStore();
+            NicosClient.getClient().registerCallbackHandler(store);
             try {
                 NicosClient.getClient().connect(connData);
             } catch (RuntimeException e) {
-                // NicosClient failed to connect. 'error' contains the reason.
-                error = e.getMessage();
-                return false;
+                // Is already connected...
             }
-
-            // connect() didn't throw any exception - connection successfully established
-            return true;
+            NicosClient.getClient().unregisterCallbackHandler(store);
+            // Connect was attempted. Look if client is actually connected...
+            if (NicosClient.getClient().isConnected()) {
+                return true;
+            }
+            error = store.getLastErrorMessage();
+            return false;
         }
 
         @Override
