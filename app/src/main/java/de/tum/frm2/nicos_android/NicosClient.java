@@ -36,7 +36,9 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
@@ -624,6 +626,37 @@ public class NicosClient {
             throw (PythonException) result;
         }
         return result;
+    }
+
+    // high-level functionality
+
+    public List<String> getDeviceList(String needs_class, boolean only_explicit,
+                                      String exclude_class, String special_clause) {
+        // This method has WAY to many keywords for Java to implement all of the possibilities
+        // via overloading.
+        // This is the only way to call it.
+        if (needs_class == null) {
+            needs_class = "nicos.core.device.Device";
+        }
+        String query = "list(dn for (dn, d) in session.devices.items() if '" + needs_class +
+                "' in d.classes";
+        if (exclude_class != null) {
+            query += " and '" + exclude_class + "' not in d.classes";
+        }
+        if (only_explicit) {
+            query += " and dn in session.explicit_devices";
+        }
+        if (special_clause != null) {
+            query += " and " + special_clause;
+        }
+        query += ")";
+        ArrayList<Object> result = (ArrayList<Object>) eval(query, new ArrayList<Object>());
+        ArrayList<String> deviceList = new ArrayList<String>();
+        for (Object device : result) {
+            deviceList.add(((String) device).toLowerCase());
+        }
+        Collections.sort(deviceList);
+        return deviceList;
     }
 
     // Helper functions not existent in nicos-core/nicos/clients/base.py

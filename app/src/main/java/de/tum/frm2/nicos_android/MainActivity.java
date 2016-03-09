@@ -34,6 +34,14 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         textView.setText(connectionString);
 
         NicosClient.getClient().registerCallbackHandler(this);
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                // Demo for querying and printing all moveable devices.
+                System.out.println(NicosClient.getClient().getDeviceList(
+                        "nicos.core.device.Moveable", true, null, null));
+            }
+        }).start();
     }
 
     @Override
