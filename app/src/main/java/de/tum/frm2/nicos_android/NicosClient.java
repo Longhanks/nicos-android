@@ -3,6 +3,7 @@ package de.tum.frm2.nicos_android;
 import android.util.Base64;
 
 import net.razorvine.pickle.Pickler;
+import net.razorvine.pickle.PythonException;
 import net.razorvine.pickle.Unpickler;
 
 import org.apache.commons.codec.binary.Hex;
@@ -79,6 +80,9 @@ public class NicosClient {
     // Whether client is currently disconnecting
     private boolean disconnecting;
 
+    // The last payload received after calling the run() method
+    private Object last_reqno;
+
     // Whether the user is connected in view only mode
     private boolean viewonly;
 
@@ -105,6 +109,7 @@ public class NicosClient {
         eventSocket = null;
         connected = false;
         disconnecting = false;
+        last_reqno = null;
         viewonly = true;
         user_level = -1;
         client_id = getMD5().digest(getUniqueID().getBytes());
@@ -580,6 +585,45 @@ public class NicosClient {
             handle_error(e);
             return null;
         }
+    }
+
+    public Object run(String code) {
+        return run(code, "");
+    }
+
+    public Object run(String code, String filename) {
+        // Run a piece of code.
+        Object[] tuple = {filename, code};
+        last_reqno = ask("queue", tuple);
+        return last_reqno;
+    }
+
+    public Object eval(String expr) throws PythonException {
+        return eval(expr, null, false);
+    }
+
+    public Object eval(String expr, boolean stringify) throws PythonException {
+        return eval(expr, null, stringify);
+    }
+
+    public Object eval(String expr, Object default_) throws PythonException {
+        return eval(expr, default_, false);
+    }
+
+    public Object eval(String expr, Object default_, boolean stringify) throws PythonException {
+        // Evaluate a Python expression in the daemon's namespace and return the result.
+        // If default is given and an exception occurs, default will be returned.
+        // If default is not given and an exception occurs, the exception will be thrown for the
+        // client to handle.
+        Object[] tuple = {expr, stringify};
+        Object result = ask("eval", tuple, true);
+        if (result instanceof PythonException) {
+            if (default_ != null) {
+                return default_;
+            }
+            throw (PythonException) result;
+        }
+        return result;
     }
 
     // Helper functions not existent in nicos-core/nicos/clients/base.py
