@@ -103,6 +103,9 @@ public class NicosClient {
     private final static int BUFSIZE = 8192;
     private final static int TIMEOUT = 30000;
 
+    // Placeholder object
+    private final static Object Ellipsis = new Object();
+
     private NicosClient() {
         // private constructor -> Singleton
         Security.insertProviderAt(new org.spongycastle.jce.provider.BouncyCastleProvider(), 1);
@@ -508,7 +511,7 @@ public class NicosClient {
         Object result = null;
         try {
             result = unpickler.loads(buf.toByteArray());
-        } catch (IOException e) {
+        } catch (Exception e) {
             // result stays at null.
             handle_error(e);
         }
@@ -570,11 +573,15 @@ public class NicosClient {
             }
             return null;
         }
-
         else if (viewonly && daemon.ACTIVE_COMMANDS.contains(command)) {
             signal("error", "Your client is set to view-only mode.");
             return null;
         }
+        if (args == null) {
+            Object[] _ = {};
+            args = _;
+        }
+
         try {
             _write(command, args);
             TupleOfTwo<Byte, Object> tuple = _read();
@@ -601,11 +608,11 @@ public class NicosClient {
     }
 
     public Object eval(String expr) throws PythonException {
-        return eval(expr, null, false);
+        return eval(expr, Ellipsis, false);
     }
 
     public Object eval(String expr, boolean stringify) throws PythonException {
-        return eval(expr, null, stringify);
+        return eval(expr, Ellipsis, stringify);
     }
 
     public Object eval(String expr, Object default_) throws PythonException {
@@ -620,7 +627,7 @@ public class NicosClient {
         Object[] tuple = {expr, stringify};
         Object result = ask("eval", tuple, true);
         if (result instanceof PythonException) {
-            if (default_ != null) {
+            if (default_ != Ellipsis) {
                 return default_;
             }
             throw (PythonException) result;
@@ -657,6 +664,16 @@ public class NicosClient {
         }
         Collections.sort(deviceList);
         return deviceList;
+    }
+
+    public Object getDeviceValue(String devname) {
+        // Return a devices value.
+        return eval(String.format("session.getDevice(%s).read()", devname), null);
+    }
+
+    public Object getDeviceValuetype(String devname) {
+        // Return a devices value type.
+        return eval(String.format("session.getDevice(%s).valuetype", devname), null);
     }
 
     // Helper functions not existent in nicos-core/nicos/clients/base.py

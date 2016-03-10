@@ -40,6 +40,8 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 // Demo for querying and printing all moveable devices.
                 System.out.println(NicosClient.getClient().getDeviceList(
                         "nicos.core.device.Moveable", true, null, null));
+                System.out.println(NicosClient.getClient().getDeviceValue("T_demo"));
+                System.out.println(NicosClient.getClient().getDeviceValuetype("T_demo"));
             }
         }).start();
     }
