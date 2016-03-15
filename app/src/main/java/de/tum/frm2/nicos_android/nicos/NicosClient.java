@@ -1,4 +1,4 @@
-package de.tum.frm2.nicos_android;
+package de.tum.frm2.nicos_android.nicos;
 
 import android.util.Base64;
 
@@ -21,7 +21,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketAddress;
-import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -44,6 +43,10 @@ import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
+
+import de.tum.frm2.nicos_android.util.NicosCallbackHandler;
+import de.tum.frm2.nicos_android.util.ReadOnlyListConstructor;
+import de.tum.frm2.nicos_android.util.TupleOfTwo;
 
 
 public class NicosClient {
@@ -120,7 +123,8 @@ public class NicosClient {
         client_id = getMD5().digest(getUniqueID().getBytes());
 
         // Add debug printer for signals.
-        callbackHandlers.add(new SignalDebugPrinter());
+        // callbackHandlers.add(new SignalDebugPrinter());
+        Unpickler.registerConstructor("nicos.utils", "readonlylist", new ReadOnlyListConstructor());
     }
 
     public static NicosClient getClient() {
@@ -668,12 +672,17 @@ public class NicosClient {
 
     public Object getDeviceValue(String devname) {
         // Return a devices value.
-        return eval(String.format("session.getDevice(%s).read()", devname), null);
+        return eval(String.format("session.getDevice('%s').read()", devname), null);
     }
 
     public Object getDeviceValuetype(String devname) {
         // Return a devices value type.
-        return eval(String.format("session.getDevice(%s).valuetype", devname), null);
+        return eval(String.format("session.getDevice('%s').valuetype", devname), null);
+    }
+
+    public Object getDeviceStatus(String devname) {
+        // Return a devices status.
+        return eval(String.format("session.getDevice('%s').status()", devname), null);
     }
 
     // Helper functions not existent in nicos-core/nicos/clients/base.py

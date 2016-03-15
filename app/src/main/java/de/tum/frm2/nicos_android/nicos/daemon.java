@@ -1,4 +1,4 @@
-package de.tum.frm2.nicos_android;
+package de.tum.frm2.nicos_android.nicos;
 
 // Resembles nicos-core/nicos/protocols/daemon.py
 
@@ -7,6 +7,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import de.tum.frm2.nicos_android.util.TupleOfTwo;
 
 public class daemon {
     // Resembles nicos-core/nicos/clients/base.py

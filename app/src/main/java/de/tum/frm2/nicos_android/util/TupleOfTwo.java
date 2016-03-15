@@ -1,6 +1,6 @@
-package de.tum.frm2.nicos_android;
+package de.tum.frm2.nicos_android.util;
 
-class TupleOfTwo<T1, T2> {
+public class TupleOfTwo<T1, T2> {
     private T1 t1;
     private T2 t2;
 

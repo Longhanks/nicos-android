@@ -1,4 +1,4 @@
-package de.tum.frm2.nicos_android;
+package de.tum.frm2.nicos_android.gui;
 
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
@@ -18,6 +18,11 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+
+import de.tum.frm2.nicos_android.nicos.ConnectionData;
+import de.tum.frm2.nicos_android.util.NicosCallbackHandler;
+import de.tum.frm2.nicos_android.nicos.NicosClient;
+import de.tum.frm2.nicos_android.R;
 
 
 public class LoginActivity extends AppCompatActivity {

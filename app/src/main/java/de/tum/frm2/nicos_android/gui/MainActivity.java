@@ -1,4 +1,4 @@
-package de.tum.frm2.nicos_android;
+package de.tum.frm2.nicos_android.gui;
 
 import android.app.AlertDialog;
 import android.content.DialogInterface;
@@ -10,12 +10,28 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.GridView;
+import android.widget.ListView;
 import android.widget.TextView;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+
+import de.tum.frm2.nicos_android.nicos.ConnectionData;
+import de.tum.frm2.nicos_android.nicos.Device;
+import de.tum.frm2.nicos_android.util.NicosCallbackHandler;
+import de.tum.frm2.nicos_android.nicos.NicosClient;
+import de.tum.frm2.nicos_android.R;
+import de.tum.frm2.nicos_android.util.TupleOfTwo;
 
 
 public class MainActivity extends AppCompatActivity implements NicosCallbackHandler {
     public final static String MESSAGE_DAEMON_INFO =
             "de.tum.frm2.nicos_android.MESSAGE_DAEMON_INFO";
+    private ArrayList<Device> _moveables;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -23,25 +39,16 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        TextView textView = (TextView) findViewById(R.id.textView);
+        _moveables = new ArrayList<Device>();
 
         ConnectionData connData = (ConnectionData) getIntent().getSerializableExtra(
                 LoginActivity.MESSAGE_CONNECTION_DATA);
-        String connectionString = String.format("Connected to: %s@%s, user_level: %s",
-                connData.getUser(),
-                connData.getHost(),
-                String.valueOf(NicosClient.getClient().getUserLevel()));
-        textView.setText(connectionString);
 
         NicosClient.getClient().registerCallbackHandler(this);
         new Thread(new Runnable() {
             @Override
             public void run() {
-                // Demo for querying and printing all moveable devices.
-                System.out.println(NicosClient.getClient().getDeviceList(
-                        "nicos.core.device.Moveable", true, null, null));
-                System.out.println(NicosClient.getClient().getDeviceValue("T_demo"));
-                System.out.println(NicosClient.getClient().getDeviceValuetype("T_demo"));
+                on_client_connected();
             }
         }).start();
     }
@@ -142,6 +149,58 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 }
             });
         }
-        // Should at one point also implement GUI display of events.
+    }
+
+    private void on_client_connected() {
+        // Query moveables.
+        ArrayList<String> lowercaseMoveables =
+                (ArrayList<String>) NicosClient.getClient().getDeviceList(
+                        "nicos.core.device.Moveable", true, null, null);
+
+        // Ask for current status.
+        Object untyped_state = NicosClient.getClient().ask("getstatus", null);
+        if (untyped_state == null) {
+            return;
+        }
+        HashMap<String, Object> state = (HashMap<String, Object>) untyped_state;
+
+        // Extract device list from status. We need this for the device's "real" name (with upper
+        // case letters).
+        ArrayList<String> devlist = (ArrayList<String>) state.get("devices");
+        for (String device : devlist) {
+            String cachekey = device.toLowerCase();
+            if (lowercaseMoveables.contains(cachekey)) {
+                Device moveable = new Device(device, cachekey);
+                Object untypedStatus = NicosClient.getClient().getDeviceStatus(device);
+                Object[] tupleStatus;
+                if (untypedStatus == null) {
+                    tupleStatus = new Object[] {-1, null};
+                }
+                else {
+                    tupleStatus = (Object[]) untypedStatus;
+                }
+                moveable.setStatus((int) tupleStatus[0]);
+                moveable.setValue(NicosClient.getClient().getDeviceValue(device));
+                _moveables.add(moveable);
+            }
+        }
+        Collections.sort(_moveables, new Comparator<Device>() {
+            @Override
+            public int compare(Device lhs, Device rhs) {
+                return lhs.getCacheName().compareTo(rhs.getCacheName());
+            }
+        });
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                // Fill list with devices.
+                View content_main = findViewById(R.id.content_main);
+                DeviceViewAdapter adapter = new DeviceViewAdapter(MainActivity.this,
+                        _moveables.toArray(new Device[_moveables.size()]));
+                ListView deviceListView = (ListView) content_main.findViewById(R.id.deviceListView);
+                deviceListView.setAdapter(adapter);
+            }
+        });
     }
 }

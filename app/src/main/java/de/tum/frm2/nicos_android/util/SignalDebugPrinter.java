@@ -1,4 +1,4 @@
-package de.tum.frm2.nicos_android;
+package de.tum.frm2.nicos_android.util;
 
 
 public class SignalDebugPrinter implements NicosCallbackHandler {
