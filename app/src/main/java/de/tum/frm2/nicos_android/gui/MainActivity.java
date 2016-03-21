@@ -25,6 +25,7 @@ import de.tum.frm2.nicos_android.nicos.Device;
 import de.tum.frm2.nicos_android.util.NicosCallbackHandler;
 import de.tum.frm2.nicos_android.nicos.NicosClient;
 import de.tum.frm2.nicos_android.R;
+import de.tum.frm2.nicos_android.util.ReadOnlyList;
 import de.tum.frm2.nicos_android.util.TupleOfTwo;
 
 
@@ -171,6 +172,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             String cachekey = device.toLowerCase();
             if (lowercaseMoveables.contains(cachekey)) {
                 Device moveable = new Device(device, cachekey);
+                // Query current status.
                 Object untypedStatus = NicosClient.getClient().getDeviceStatus(device);
                 Object[] tupleStatus;
                 if (untypedStatus == null) {
@@ -181,6 +183,16 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 }
                 moveable.setStatus((int) tupleStatus[0]);
                 moveable.setValue(NicosClient.getClient().getDeviceValue(device));
+
+                // Query parameters.
+                ArrayList<Object> params = NicosClient.getClient().getDeviceParams(cachekey);
+                for (Object param : params) {
+                    Object[] tuple = (Object[]) param;
+                    // Split device name from parameter name.
+                    // e.g. t/fmtstr -> fmtstr
+                    String[] keyParts = ((String) tuple[0]).split(("/"));
+                    moveable.addParam(keyParts[1], tuple[1]);
+                }
                 _moveables.add(moveable);
             }
         }

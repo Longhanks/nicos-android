@@ -8,9 +8,14 @@ import android.widget.ArrayAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import de.tum.frm2.nicos_android.R;
 import de.tum.frm2.nicos_android.nicos.Device;
 import de.tum.frm2.nicos_android.nicos.status;
+import de.tum.frm2.nicos_android.util.ReadOnlyList;
 
 public class DeviceViewAdapter extends ArrayAdapter<Device> {
     private final Context context;
@@ -37,11 +42,16 @@ public class DeviceViewAdapter extends ArrayAdapter<Device> {
         Device device = devices[position];
 
         deviceNameTextView.setText(device.getName());
-        String value = "";
-        if (device.getValue() != null) {
-            value = device.getValue().toString();
+        String format = (String) device.getParam("fmtstr");
+        String unit = (String) device.getParam("unit");
+        if (unit == null) {
+            unit = "";
         }
-        deviceValueTextView.setText(value);
+        else {
+            unit = " " + unit;
+        }
+        deviceValueTextView.setText(formatValue(device.getValue(), format) + unit);
+
         switch (device.getStatus()) {
             case status.OK:
                 statusledView.setImageResource(R.drawable.simplegreen);
@@ -65,5 +75,64 @@ public class DeviceViewAdapter extends ArrayAdapter<Device> {
                 statusledView.setImageResource(R.drawable.simplegreen);
         }
         return deviceView;
+    }
+
+    public String formatValue(Object value, String fmt) {
+        if (value != null) {
+            String formatted;
+            try {
+                if (value.getClass() == Double.class || value.getClass() == Integer.class) {
+                    // float (is double after depickling), double, int
+                    formatted = String.format(fmt, value);
+                } else if (value.getClass() == ReadOnlyList.class ||
+                        value.getClass() == ArrayList.class ||
+                        value.getClass() == Object[].class) {
+                    // list, tuple (Nicos tuplifies all lists; I'm doing "the same")
+                    formatted = "(";
+                    Object[] tuple;
+                    if (value.getClass() == Object[].class) {
+                        tuple = (Object[]) value;
+                    }
+                    else {
+                        tuple = ((ArrayList) value).toArray();
+                    }
+                    try {
+                        // Try to append the format using fmtstring.
+                        String formattedList = String.format(fmt, tuple);
+                        formatted += formattedList;
+                    }
+                    catch (Exception e) {
+                        // Formatting failed.
+                        formatted = "("; // resets String if previous attempt left over stuff
+                        for (int i = 0; i < tuple.length; ++i) {
+                            try {
+                                String obj = tuple[i].toString();
+                                if (obj.isEmpty()) {
+                                    obj = "''";
+                                }
+                                formatted += obj;
+                                if (i + 1 != tuple.length) {
+                                    formatted += ", ";
+                                }
+                            }
+                            catch (Exception e2) {
+                                // Tuple contains null or some garbage.
+                                formatted += "''";
+                                if (i + 1 != tuple.length) {
+                                    formatted += ", ";
+                                }                            }
+                        }
+                    }
+                    formatted += ")";
+                } else {
+                    throw new RuntimeException("Unkown class");
+                }
+            }
+            catch (Exception e) {
+                formatted = value.toString();
+            }
+            return formatted;
+        }
+        return "None";
     }
 }

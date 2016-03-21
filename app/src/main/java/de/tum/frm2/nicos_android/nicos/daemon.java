@@ -16,12 +16,19 @@ public class daemon {
     // functionality of this class.
 
     // protocol version
-    public static final int PROTO_VERSION = 13;
+    public static final int[] PROTO_VERSIONS = {14, 13, 12, 11, 10};
 
     public static final byte ENQ = 0x05;
     public static final byte ACK = 0x06;
     public static final byte NAK = 0x15;
     public static final byte STX = 0x03;
+
+    public static boolean isProtoVersionCompatible(int proto) {
+        for (int i : PROTO_VERSIONS) {
+            if (i == proto) return true;
+        }
+        return false;
+    }
 
     public static final Map<String, Byte> command2code = Collections.unmodifiableMap(
             new HashMap<String, Byte>() {{

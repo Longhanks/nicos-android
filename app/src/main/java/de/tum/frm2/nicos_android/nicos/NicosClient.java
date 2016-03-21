@@ -13,7 +13,10 @@ import org.spongycastle.asn1.ASN1InputStream;
 import org.spongycastle.asn1.ASN1Primitive;
 import org.spongycastle.asn1.x509.RSAPublicKeyStructure;
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -45,7 +48,9 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
 import de.tum.frm2.nicos_android.util.NicosCallbackHandler;
+import de.tum.frm2.nicos_android.util.ReadOnlyDictConstructor;
 import de.tum.frm2.nicos_android.util.ReadOnlyListConstructor;
+import de.tum.frm2.nicos_android.util.SignalDebugPrinter;
 import de.tum.frm2.nicos_android.util.TupleOfTwo;
 
 
@@ -125,6 +130,7 @@ public class NicosClient {
         // Add debug printer for signals.
         // callbackHandlers.add(new SignalDebugPrinter());
         Unpickler.registerConstructor("nicos.utils", "readonlylist", new ReadOnlyListConstructor());
+        Unpickler.registerConstructor("nicos.utils", "readonlydict", new ReadOnlyDictConstructor());
     }
 
     public static NicosClient getClient() {
@@ -219,10 +225,10 @@ public class NicosClient {
                 throw new ProtocolError("daemon version missing from response");
             }
             int daemon_proto = (int) nicosBanner.get("protocol_version");
-            if (daemon_proto != daemon.PROTO_VERSION) {
+            if (!daemon.isProtoVersionCompatible(daemon_proto)) {
                 throw new ProtocolError("daemon uses protocol " +
                         String.valueOf(daemon_proto) + ", but this client requires protocol " +
-                        String.valueOf(daemon.PROTO_VERSION));
+                        String.valueOf(daemon.PROTO_VERSIONS[0]));
             }
         }
         catch (Exception e) {
@@ -478,48 +484,49 @@ public class NicosClient {
 
     public TupleOfTwo<Byte, Object> _read() throws ProtocolError {
         // receive first byte + (possibly) length
-        byte[] start = new byte[5];
+        DataInputStream din = new DataInputStream(socketIn);
+        byte start;
         try {
-            socketIn.read(start);
+            start = din.readByte();
         }
         catch (IOException e) {
             throw new ProtocolError("connection broken");
         }
-        if (start[0] == daemon.ACK) {
+        if (start == daemon.ACK) {
             // ACK == executed ok, no more information follows
-            return new TupleOfTwo<Byte, Object>(start[0], null);
+            return new TupleOfTwo<Byte, Object>(start, null);
         }
 
-        if (start[0] != daemon.NAK && start[0] != daemon.STX) {
+        if (start != daemon.NAK && start != daemon.STX) {
             // Server respondend with neither NAK (error) nor STX (ok)
-            throw new ProtocolError("invalid response " + start.toString());
+            throw new ProtocolError("invalid response " + String.valueOf(start));
         }
 
         // it has a length...
-        byte[] slice = Arrays.copyOfRange(start, 1, 5);
-        ByteBuffer bb = ByteBuffer.wrap(slice);
-        bb.order(ByteOrder.BIG_ENDIAN);
-        int length = bb.getInt();
-
-        ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        while (buf.size() < length) {
-            byte[] read = new byte[BUFSIZE];
-            try {
-                socketIn.read(read);
-                buf.write(read);
-            } catch (IOException e) {
-                throw new ProtocolError("connection broken");
-            }
+        int length;
+        try {
+            length = din.readInt();
+        } catch (IOException e) {
+            throw new ProtocolError("connection broken");
         }
+        // Cannot concat these two try blocks: We need length before allocating msg.
+        // And msg needs to be declared outside of try block to be accessible afterwards.
+        byte[] msg = new byte[length];
+        try {
+            din.readFully(msg, 0, length);
+        } catch (IOException e) {
+            throw new ProtocolError("connection broken");
+        }
+
         Unpickler unpickler = new Unpickler();
         Object result = null;
         try {
-            result = unpickler.loads(buf.toByteArray());
+            result = unpickler.loads(msg);
         } catch (Exception e) {
             // result stays at null.
             handle_error(e);
         }
-        return new TupleOfTwo<Byte, Object>(start[0], result);
+        return new TupleOfTwo<Byte, Object>(start, result);
     }
 
     public boolean tell(String command, Object arguments) {
@@ -535,8 +542,8 @@ public class NicosClient {
         if (arguments == null) {
             // Oh Java.
             // "array initializer not allowed here" for args = {}...
-            Object[] _ = {};
-            args = _;
+            Object[] _empty = {};
+            args = _empty;
         }
 
         if (socket == null) {
@@ -683,6 +690,19 @@ public class NicosClient {
     public Object getDeviceStatus(String devname) {
         // Return a devices status.
         return eval(String.format("session.getDevice('%s').status()", devname), null);
+    }
+
+    public ArrayList<Object> getDeviceParams(String devname) {
+        ArrayList<Object> params;
+        Object[] tuple = new Object[] {devname.toLowerCase() + "/"};
+        Object devkeys = ask("getcachekeys", tuple);
+        if (devkeys != null) {
+            params = (ArrayList<Object>) devkeys;
+        }
+        else {
+            params = null;
+        }
+        return params;
     }
 
     // Helper functions not existent in nicos-core/nicos/clients/base.py
