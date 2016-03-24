@@ -5,34 +5,36 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.GridView;
 import android.widget.ListView;
-import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.tum.frm2.nicos_android.nicos.ConnectionData;
 import de.tum.frm2.nicos_android.nicos.Device;
 import de.tum.frm2.nicos_android.util.NicosCallbackHandler;
 import de.tum.frm2.nicos_android.nicos.NicosClient;
 import de.tum.frm2.nicos_android.R;
-import de.tum.frm2.nicos_android.util.ReadOnlyList;
-import de.tum.frm2.nicos_android.util.TupleOfTwo;
 
 
 public class MainActivity extends AppCompatActivity implements NicosCallbackHandler {
     public final static String MESSAGE_DAEMON_INFO =
             "de.tum.frm2.nicos_android.MESSAGE_DAEMON_INFO";
     private ArrayList<Device> _moveables;
+    private DeviceViewAdapter _devicesAdapter;
+    private Handler _uiThread;
+    private boolean _visible;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,7 +42,21 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         setContentView(R.layout.activity_main);
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        // Set up the container and its adapter for devices.
         _moveables = new ArrayList<Device>();
+        View content_main = findViewById(R.id.content_main);
+        _devicesAdapter = new DeviceViewAdapter(MainActivity.this,
+                _moveables);
+        final ListView deviceListView = (ListView) content_main.findViewById(R.id.deviceListView);
+        deviceListView.setAdapter(_devicesAdapter);
+
+        // Set up _uiThread to be a handler that runs runnables on the UI thread.
+        // advantage over runOnUiThread() is that we can actually control the state of the thread
+        // and cancel it, if needed.
+        _uiThread = new Handler(Looper.getMainLooper());
+
+        _visible = true;
 
         ConnectionData connData = (ConnectionData) getIntent().getSerializableExtra(
                 LoginActivity.MESSAGE_CONNECTION_DATA);
@@ -103,6 +119,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
 
     @Override
     public void onBackPressed() {
+        _visible = false;
         NicosClient.getClient().unregisterCallbackHandler(this);
         new Thread(new Runnable() {
             @Override
@@ -110,7 +127,21 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 NicosClient.getClient().disconnect();
             }
         }).start();
+        // null parameter -> remove ALL runnables.
+        _uiThread.removeCallbacks(null);
         super.onBackPressed();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        _visible = false;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        _visible = true;
     }
 
     @Override
@@ -120,12 +151,16 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             // Connection is broken. Try to disconnect what's left and go back to login screen.
             NicosClient.getClient().unregisterCallbackHandler(this);
             NicosClient.getClient().disconnect();
+            if (!_visible) return;
+
+            // Activity is still visible, user probably didn't intend to shut down connection.
+            // We display an error.
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
+                    AlertDialog alertDialog = null;
                     try {
-                        AlertDialog alertDialog =
-                                new AlertDialog.Builder(MainActivity.this).create();
+                        alertDialog = new AlertDialog.Builder(MainActivity.this).create();
                         alertDialog.setTitle("Disconnected");
                         alertDialog.setMessage(error);
                         alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Okay",
@@ -135,6 +170,8 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                                         finish();
                                     }
                                 });
+                        alertDialog.setCancelable(false);
+                        alertDialog.setCanceledOnTouchOutside(false);
                         alertDialog.show();
                     }
                     catch (Exception e) {
@@ -154,7 +191,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
 
     private void on_client_connected() {
         // Query moveables.
-        ArrayList<String> lowercaseMoveables =
+        final ArrayList<String> lowercaseMoveables =
                 (ArrayList<String>) NicosClient.getClient().getDeviceList(
                         "nicos.core.device.Moveable", true, null, null);
 
@@ -163,56 +200,110 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         if (untyped_state == null) {
             return;
         }
-        HashMap<String, Object> state = (HashMap<String, Object>) untyped_state;
+        final HashMap<String, Object> state = (HashMap<String, Object>) untyped_state;
 
         // Extract device list from status. We need this for the device's "real" name (with upper
         // case letters).
-        ArrayList<String> devlist = (ArrayList<String>) state.get("devices");
-        for (String device : devlist) {
-            String cachekey = device.toLowerCase();
-            if (lowercaseMoveables.contains(cachekey)) {
-                Device moveable = new Device(device, cachekey);
-                // Query current status.
-                Object untypedStatus = NicosClient.getClient().getDeviceStatus(device);
-                Object[] tupleStatus;
-                if (untypedStatus == null) {
-                    tupleStatus = new Object[] {-1, null};
-                }
-                else {
-                    tupleStatus = (Object[]) untypedStatus;
-                }
-                moveable.setStatus((int) tupleStatus[0]);
-                moveable.setValue(NicosClient.getClient().getDeviceValue(device));
-
-                // Query parameters.
-                ArrayList<Object> params = NicosClient.getClient().getDeviceParams(cachekey);
-                for (Object param : params) {
-                    Object[] tuple = (Object[]) param;
-                    // Split device name from parameter name.
-                    // e.g. t/fmtstr -> fmtstr
-                    String[] keyParts = ((String) tuple[0]).split(("/"));
-                    moveable.addParam(keyParts[1], tuple[1]);
-                }
-                _moveables.add(moveable);
-            }
-        }
-        Collections.sort(_moveables, new Comparator<Device>() {
-            @Override
-            public int compare(Device lhs, Device rhs) {
-                return lhs.getCacheName().compareTo(rhs.getCacheName());
-            }
-        });
-
-        runOnUiThread(new Runnable() {
+        final AtomicBoolean uiAddDevicesDone = new AtomicBoolean(false);
+        final Runnable uiAddDevices = new Runnable() {
             @Override
             public void run() {
-                // Fill list with devices.
-                View content_main = findViewById(R.id.content_main);
-                DeviceViewAdapter adapter = new DeviceViewAdapter(MainActivity.this,
-                        _moveables.toArray(new Device[_moveables.size()]));
-                ListView deviceListView = (ListView) content_main.findViewById(R.id.deviceListView);
-                deviceListView.setAdapter(adapter);
+                // Block access to this runnable.
+                synchronized (this) {
+                    ArrayList<String> devlist = (ArrayList<String>) state.get("devices");
+                    for (String device : devlist) {
+                        String cachekey = device.toLowerCase();
+                        if (!lowercaseMoveables.contains(cachekey)) {
+                            continue;
+                        }
+                        // Create device.
+                        final Device moveable = new Device(device, cachekey);
+
+                        // Sort devices in place.
+                        _moveables.add(moveable);
+                        Collections.sort(_moveables, new Comparator<Device>() {
+                            @Override
+                            public int compare(Device lhs, Device rhs) {
+                                return lhs.getCacheName().compareTo(rhs.getCacheName());
+                            }
+                        });
+
+                        // Notify adapter to update UI.
+                        _devicesAdapter.notifyDataSetChanged();
+                    }
+                    uiAddDevicesDone.set(true);
+                    // Tell other threads they can now safely access this runnable.
+                    notify();
+                }
             }
-        });
+        };
+
+        // Ask ui thread to run the runnable, we wait until ui thread is done.
+        _uiThread.post(uiAddDevices);
+        // Try to accesss runnable.
+        synchronized (uiAddDevices) {
+            while (!uiAddDevicesDone.get()) {
+                try {
+                    // Wait for runnable to call notify().
+                    uiAddDevices.wait();
+                } catch (InterruptedException e) {
+                    // Thread cancelled -> Activity probably destroyed.
+                }
+            }
+        }
+
+        // UI thread is done adding devices.
+        // Query statuses and values of all devices.
+
+        // List of currently running runnables that update devices.
+        for (final Device device : _moveables) {
+            // Query this device's status.
+            Object untypedStatus = NicosClient.getClient().getDeviceStatus(device.getName());
+            Object[] tupleStatus;
+            if (untypedStatus == null) {
+                tupleStatus = new Object[] {-1, null};
+            }
+            else {
+                tupleStatus = (Object[]) untypedStatus;
+            }
+
+            final int status = (int) tupleStatus[0];
+            final Object value = NicosClient.getClient().getDeviceValue(device.getName());
+
+            // A runnable to update the device in UI thread with new status + value.
+            final Runnable uiChangeValue = new Runnable() {
+                @Override
+                public void run() {
+                    device.setStatus(status);
+                    device.setValue(value);
+                    _devicesAdapter.notifyDataSetChanged();
+                }
+            };
+            // Let UI thread run the runnable.
+            _uiThread.post(uiChangeValue);
+        }
+
+        // We continue here,  although updating all values may not be done yet. But we can already
+        // start querying the parameters, they also just update the devices.
+        // Whether value or fmtstr get added first doesn't matter: Both force the UI to update
+        // itself. So the latter one always ensures corrent display.
+        for (final Device device : _moveables) {
+            ArrayList<Object> params = NicosClient.getClient().getDeviceParams(
+                    device.getCacheName());
+            for (Object param : params) {
+                final Object[] tuple = (Object[]) param;
+                // Split device name from parameter name.
+                // e.g. t/fmtstr -> fmtstr
+                final String[] keyParts = ((String) tuple[0]).split(("/"));
+                _uiThread.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        device.addParam(keyParts[1], tuple[1]);
+                        _devicesAdapter.notifyDataSetChanged();
+                    }
+                });
+
+            }
+        }
     }
 }

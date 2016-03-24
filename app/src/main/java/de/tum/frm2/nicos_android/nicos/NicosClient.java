@@ -41,12 +41,14 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.crypto.BadPaddingException;
 import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
+import de.tum.frm2.nicos_android.util.ConfigurationErrorConstructor;
 import de.tum.frm2.nicos_android.util.NicosCallbackHandler;
 import de.tum.frm2.nicos_android.util.ReadOnlyDictConstructor;
 import de.tum.frm2.nicos_android.util.ReadOnlyListConstructor;
@@ -105,7 +107,7 @@ public class NicosClient {
     private InputStream eventSocketIn;
 
     // The list of handlers that receive the signal() calls
-    private ArrayList<NicosCallbackHandler> callbackHandlers;
+    private List<NicosCallbackHandler> callbackHandlers;
 
     // constants
     private final static int BUFSIZE = 8192;
@@ -117,7 +119,7 @@ public class NicosClient {
     private NicosClient() {
         // private constructor -> Singleton
         Security.insertProviderAt(new org.spongycastle.jce.provider.BouncyCastleProvider(), 1);
-        callbackHandlers = new ArrayList<NicosCallbackHandler>();
+        callbackHandlers = Collections.synchronizedList(new CopyOnWriteArrayList<NicosCallbackHandler>());
         socket = null;
         eventSocket = null;
         connected = false;
@@ -131,6 +133,8 @@ public class NicosClient {
         // callbackHandlers.add(new SignalDebugPrinter());
         Unpickler.registerConstructor("nicos.utils", "readonlylist", new ReadOnlyListConstructor());
         Unpickler.registerConstructor("nicos.utils", "readonlydict", new ReadOnlyDictConstructor());
+        Unpickler.registerConstructor("nicos.core.errors",
+                "ConfigurationError", new ConfigurationErrorConstructor());
     }
 
     public static NicosClient getClient() {
@@ -345,12 +349,13 @@ public class NicosClient {
     }
 
     public void event_handler() {
+        DataInputStream din = new DataInputStream(eventSocketIn);
         while (true) {
             try {
                 // receive STX (1 byte) + eventcode (2) + length (4)
                 byte[] start = new byte[7];
                 try {
-                    eventSocketIn.read(start);
+                    din.read(start);
                 } catch (IOException e) {
                     if (!disconnecting) {
                         signal("broken", "Server connection broken.");
@@ -369,21 +374,13 @@ public class NicosClient {
                 byte[] slice = Arrays.copyOfRange(start, 3, 7);
                 ByteBuffer bb = ByteBuffer.wrap(slice);
                 bb.order(ByteOrder.BIG_ENDIAN);
-                int length = bb.getInt();
 
-                ByteArrayOutputStream buf = new ByteArrayOutputStream();
-                while (buf.size() < length) {
-                    byte[] read = new byte[BUFSIZE];
-                    try {
-                        eventSocketIn.read(read);
-                        buf.write(read);
-                    } catch (IOException e) {
-                        if (!disconnecting) {
-                            signal("broken", "Server connection broken.");
-                            _close();
-                        }
-                    }
-                }
+                // Get length, allocate byte buffer.
+                int length = bb.getInt();
+                byte[] buf = new byte[length];
+
+                // Read length bytes and store them in buf.
+                din.readFully(buf, 0, length);
 
                 boolean should_signal = true;
                 String event = null;
@@ -396,9 +393,9 @@ public class NicosClient {
                     // serialized or raw data?
                     if (daemon.eventNeedsUnserialize(event)) {
                         Unpickler unpickler = new Unpickler();
-                        data = unpickler.loads(buf.toByteArray());
+                        data = unpickler.loads(buf);
                     } else {
-                        data = buf.toByteArray();
+                        data = buf;
                     }
                 }
                 catch (Exception e) {

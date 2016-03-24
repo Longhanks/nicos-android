@@ -19,9 +19,9 @@ import de.tum.frm2.nicos_android.util.ReadOnlyList;
 
 public class DeviceViewAdapter extends ArrayAdapter<Device> {
     private final Context context;
-    private final Device[] devices;
+    private ArrayList<Device> devices;
 
-    public DeviceViewAdapter(Context context, Device[] devices) {
+    public DeviceViewAdapter(Context context, ArrayList<Device> devices) {
         super(context, R.layout.sample_device_view, devices);
         this.context = context;
         this.devices = devices;
@@ -39,7 +39,7 @@ public class DeviceViewAdapter extends ArrayAdapter<Device> {
         TextView deviceValueTextView = (TextView) deviceView.findViewById(R.id.deviceValueTextView);
         ImageView statusledView = (ImageView) deviceView.findViewById(R.id.statusledView);
         // Map position to index of array.
-        Device device = devices[position];
+        Device device = devices.get(position);
 
         deviceNameTextView.setText(device.getName());
         String format = (String) device.getParam("fmtstr");
