@@ -298,6 +298,9 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         for (final Device device : _moveables) {
             ArrayList<Object> params = NicosClient.getClient().getDeviceParams(
                     device.getCacheName());
+            if (params == null) {
+                continue;
+            }
             for (Object param : params) {
                 final Object[] tuple = (Object[]) param;
                 // Split device name from parameter name.

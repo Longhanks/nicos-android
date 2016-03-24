@@ -13,10 +13,8 @@ import org.spongycastle.asn1.ASN1InputStream;
 import org.spongycastle.asn1.ASN1Primitive;
 import org.spongycastle.asn1.x509.RSAPublicKeyStructure;
 
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -48,11 +46,14 @@ import javax.crypto.Cipher;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 
-import de.tum.frm2.nicos_android.util.ConfigurationErrorConstructor;
+import de.tum.frm2.nicos_android.errors.CommunicationErrorConstructor;
+import de.tum.frm2.nicos_android.errors.ConfigurationErrorConstructor;
+import de.tum.frm2.nicos_android.errors.InvalidValueErrorConstructor;
+import de.tum.frm2.nicos_android.errors.NicosErrorConstructor;
+import de.tum.frm2.nicos_android.errors.strErrorConstructor;
 import de.tum.frm2.nicos_android.util.NicosCallbackHandler;
 import de.tum.frm2.nicos_android.util.ReadOnlyDictConstructor;
 import de.tum.frm2.nicos_android.util.ReadOnlyListConstructor;
-import de.tum.frm2.nicos_android.util.SignalDebugPrinter;
 import de.tum.frm2.nicos_android.util.TupleOfTwo;
 
 
@@ -135,6 +136,14 @@ public class NicosClient {
         Unpickler.registerConstructor("nicos.utils", "readonlydict", new ReadOnlyDictConstructor());
         Unpickler.registerConstructor("nicos.core.errors",
                 "ConfigurationError", new ConfigurationErrorConstructor());
+        Unpickler.registerConstructor("nicos.core.errors",
+                "CommunicationError", new CommunicationErrorConstructor());
+        Unpickler.registerConstructor("nicos.core.errors",
+                "NicosError", new NicosErrorConstructor());
+        Unpickler.registerConstructor("nicos.core.errors",
+                "InvalidValueError", new InvalidValueErrorConstructor());
+        Unpickler.registerConstructor("__builtin__",
+                "str", new strErrorConstructor());
     }
 
     public static NicosClient getClient() {

@@ -1,9 +1,7 @@
-package de.tum.frm2.nicos_android.util;
+package de.tum.frm2.nicos_android.errors;
 
 import net.razorvine.pickle.IObjectConstructor;
 import net.razorvine.pickle.PickleException;
-
-import java.util.HashMap;
 
 public class ConfigurationErrorConstructor implements IObjectConstructor {
     @Override

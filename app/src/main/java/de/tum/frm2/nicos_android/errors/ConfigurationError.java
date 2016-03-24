@@ -1,4 +1,4 @@
-package de.tum.frm2.nicos_android.util;
+package de.tum.frm2.nicos_android.errors;
 
 
 import java.util.HashMap;
@@ -16,5 +16,10 @@ public class ConfigurationError {
 
     public String getMessage() {
         return message;
+    }
+
+    @Override
+    public String toString() {
+        return "CommunicationError";
     }
 }
