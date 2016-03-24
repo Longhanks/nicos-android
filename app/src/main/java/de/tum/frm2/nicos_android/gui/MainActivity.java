@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
     private DeviceViewAdapter _devicesAdapter;
     private Handler _uiThread;
     private boolean _visible;
+    private boolean _canAccessDevices;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,6 +58,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         _uiThread = new Handler(Looper.getMainLooper());
 
         _visible = true;
+        _canAccessDevices = false;
 
         ConnectionData connData = (ConnectionData) getIntent().getSerializableExtra(
                 LoginActivity.MESSAGE_CONNECTION_DATA);
@@ -136,6 +138,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
     protected void onDestroy() {
         super.onDestroy();
         _visible = false;
+        NicosClient.getClient().unregisterCallbackHandler(this);
     }
 
     @Override
@@ -186,6 +189,9 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                     }
                 }
             });
+        }
+        else if (signal.equals("cache")) {
+            on_client_cache((Object[]) data);
         }
     }
 
@@ -253,6 +259,8 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         }
 
         // UI thread is done adding devices.
+        _canAccessDevices = true;
+
         // Query statuses and values of all devices.
 
         // List of currently running runnables that update devices.
@@ -304,6 +312,70 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 });
 
             }
+        }
+    }
+
+    private Device getDeviceByCacheName(String cacheName) {
+        for (Device d : _moveables) {
+            if (d.getCacheName().equals(cacheName)) {
+                return d;
+            }
+        }
+        return null;
+    }
+
+    private void on_client_cache(Object[] data) {
+        if (!_canAccessDevices) {
+            return;
+        }
+        String key = (String) data[1];
+        String[] splitted = key.split("/");
+        String devname = splitted[0];
+        String subkey = splitted[1];
+
+        Device maybeDevice;
+        maybeDevice = getDeviceByCacheName(devname);
+        if (maybeDevice == null) {
+            // A device not in the list, probably not a moveable.
+            return;
+        }
+
+        final Device curdev = maybeDevice;
+        final Object value = data[3];
+
+        if (subkey.equals("status")) {
+            // Cache string.
+            String tuple = (String) value;
+            // cut '(' and ')'
+            tuple = tuple.substring(1, tuple.length() - 1);
+            String[] tupelupel = tuple.split(",");
+            final int status = Integer.valueOf(tupelupel[0]);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    curdev.setStatus(status);
+                    _devicesAdapter.notifyDataSetChanged();
+                }
+            });
+        }
+        else if (subkey.equals("value")) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    curdev.setValue(value);
+                    _devicesAdapter.notifyDataSetChanged();
+                }
+            });
+        }
+        else if (subkey.equals("fmtstr")) {
+            final String fmt = (String) data[3];
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    curdev.addParam("fmtstr", fmt);
+                    _devicesAdapter.notifyDataSetChanged();
+                }
+            });
         }
     }
 }
