@@ -1,6 +1,7 @@
 package de.tum.frm2.nicos_android.gui;
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.Build;
@@ -10,10 +11,18 @@ import android.os.Looper;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.TextView;
+
+import com.sothree.slidinguppanel.SlidingUpPanelLayout;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,6 +45,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
     private Handler _uiThread;
     private boolean _visible;
     private boolean _canAccessDevices;
+    SlidingUpPanelLayout _slidingUpPanelLayout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,11 +67,71 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         // and cancel it, if needed.
         _uiThread = new Handler(Looper.getMainLooper());
 
+        // Default boolean values: Activity is visible, devices not yet fetched
         _visible = true;
         _canAccessDevices = false;
 
         ConnectionData connData = (ConnectionData) getIntent().getSerializableExtra(
                 LoginActivity.MESSAGE_CONNECTION_DATA);
+
+        // References to the 'steps' views.
+        final EditText coarseStepEditText = (EditText) findViewById(R.id.coarseStepEditText);
+        final EditText fineStepEditText = (EditText) findViewById(R.id.fineStepEditText);
+        final Button applyButton = (Button) findViewById(R.id.applyButton);
+
+        // When clickking 'enter' in the first EditText, switch to the next one.
+        coarseStepEditText.setNextFocusDownId(R.id.fineStepEditText);
+
+        // When hitting 'enter' or 'ok' on the keyboard while in the last EditText, apply changes.
+        fineStepEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView textView, int actionID, KeyEvent keyEvent) {
+                if (actionID == EditorInfo.IME_ACTION_DONE) {
+                    fineStepEditText.clearFocus();
+                    applyButton.callOnClick();
+                }
+                return false;
+            }
+        });
+
+        // Clicked the 'apply' button.
+        applyButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                view.requestFocus();
+                // Hide keyboard.
+                InputMethodManager manager =
+                        (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                manager.hideSoftInputFromWindow(view.getWindowToken(), 0);
+                // TODO: Implement applying steps!
+            }
+        });
+
+        // Reference to the bottom slider panel.
+        _slidingUpPanelLayout = (SlidingUpPanelLayout) findViewById(R.id.sliding_layout);
+
+        _slidingUpPanelLayout.addPanelSlideListener(new SlidingUpPanelLayout.PanelSlideListener() {
+            @Override
+            public void onPanelSlide(View panel, float slideOffset) {
+            }
+
+            @Override
+            public void onPanelStateChanged(View panel,
+                                            SlidingUpPanelLayout.PanelState previousState,
+                                            SlidingUpPanelLayout.PanelState newState) {
+                if (newState == SlidingUpPanelLayout.PanelState.COLLAPSED) {
+                    // When hiding the panel, also hide the keyboard and clear all focuses.
+                    InputMethodManager manager =
+                            (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    manager.hideSoftInputFromWindow(panel.getWindowToken(), 0);
+                    coarseStepEditText.clearFocus();
+                    coarseStepEditText.setImeOptions(EditorInfo.IME_ACTION_DONE);
+                    fineStepEditText.clearFocus();
+                    fineStepEditText.setImeOptions(EditorInfo.IME_ACTION_DONE);
+                }
+
+            }
+        });
 
         NicosClient.getClient().registerCallbackHandler(this);
         new Thread(new Runnable() {
@@ -121,6 +191,10 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
 
     @Override
     public void onBackPressed() {
+        if (_slidingUpPanelLayout.getPanelState() == SlidingUpPanelLayout.PanelState.EXPANDED) {
+            _slidingUpPanelLayout.setPanelState(SlidingUpPanelLayout.PanelState.COLLAPSED);
+            return;
+        }
         _visible = false;
         NicosClient.getClient().unregisterCallbackHandler(this);
         new Thread(new Runnable() {

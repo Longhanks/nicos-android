@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:grid="http://schemas.android.com/apk/res-auto">
+
+    <include layout="@layout/sliding_up_panel_bar" android:id="@+id/sliding_up_panel_bar"/>
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/sliding_up_panel_bar"
+        android:layout_centerHorizontal="true">
+
+        <android.support.design.widget.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/coarseStepTextInputLayout">
+
+            <EditText
+                android:id="@+id/coarseStepEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/prompt_coarse_steps"
+                android:inputType="number|numberSigned|numberDecimal"
+                android:maxLines="1"
+                android:singleLine="true" />
+
+        </android.support.design.widget.TextInputLayout>
+
+        <android.support.design.widget.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/coarseStepTextInputLayout"
+            android:layout_alignParentStart="true"
+            android:id="@+id/fineStepTextInputLayout">
+
+            <EditText
+                android:id="@+id/fineStepEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="@string/prompt_fine_steps"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:inputType="number|numberSigned|numberDecimal" />
+
+        </android.support.design.widget.TextInputLayout>
+
+        <Button
+            style="?android:attr/buttonStyleSmall"
+            android:text="@string/button_apply"
+            android:id="@+id/applyButton"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@+id/fineStepTextInputLayout"
+            android:layout_alignParentEnd="true" />
+    </RelativeLayout>
+
+
+</RelativeLayout>
