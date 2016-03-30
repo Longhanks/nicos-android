@@ -9,8 +9,6 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 import de.tum.frm2.nicos_android.R;
 import de.tum.frm2.nicos_android.nicos.Device;
@@ -80,11 +78,37 @@ public class DeviceViewAdapter extends ArrayAdapter<Device> {
     public String formatValue(Object value, String fmt) {
         if (value != null) {
             String formatted;
+
             try {
-                if (value.getClass() == Double.class || value.getClass() == Integer.class) {
-                    // float (is double after depickling), double, int
-                    formatted = String.format(fmt, value);
-                } else if (value.getClass() == ReadOnlyList.class ||
+                Class classOfValue = value.getClass();
+
+                if (classOfValue == String.class) {
+                    // Check if value is 'hiding' in a String
+                    String strValue = (String) value;
+
+                    try {
+                        int val = Integer.parseInt(strValue);
+                        formatted = String.format(fmt, val);
+                    } catch (NumberFormatException e) {
+                        // Isn't int.
+                        // No try/catch: if this fails, too, there is no hidden value - falls
+                        // though to the catch where we just use value.toString()
+                        double val = Double.parseDouble(strValue);
+                        formatted = String.format(fmt, val);
+                    }
+                }
+
+                else if (classOfValue == Integer.class) {
+                    // int
+                    formatted = String.format(fmt, (int) value);
+                }
+
+                else if (classOfValue == Double.class) {
+                    // float is double after depickling
+                    formatted = String.format(fmt, (double) value);
+                }
+
+                else if (classOfValue == ReadOnlyList.class ||
                         value.getClass() == ArrayList.class ||
                         value.getClass() == Object[].class) {
                     // list, tuple (Nicos tuplifies all lists; I'm doing "the same")
@@ -124,7 +148,9 @@ public class DeviceViewAdapter extends ArrayAdapter<Device> {
                         }
                     }
                     formatted += ")";
-                } else {
+                }
+
+                else {
                     throw new RuntimeException("Unkown class");
                 }
             }
