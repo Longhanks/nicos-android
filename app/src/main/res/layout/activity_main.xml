@@ -6,7 +6,7 @@
     android:layout_height="match_parent"
     android:focusableInTouchMode="true"
     android:gravity="bottom"
-    sothree:umanoPanelHeight="68dp"
+    sothree:umanoPanelHeight="136dp"
     sothree:umanoShadowHeight="4dp">
 
     <android.support.design.widget.CoordinatorLayout
@@ -36,6 +36,6 @@
 
     </android.support.design.widget.CoordinatorLayout>
 
-    <include layout="@layout/sliding_up_panel_view" android:id="@+id/sliding_up_panel_view"/>
+    <include layout="@layout/sliding_up_panel_view" android:id="@+id/slidingUpPanelView"/>
 
 </com.sothree.slidinguppanel.SlidingUpPanelLayout>

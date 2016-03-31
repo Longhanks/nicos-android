@@ -18,5 +18,18 @@
     <string name="prompt_coarse_steps">Coarse step</string>
     <string name="prompt_fine_steps">Fine step</string>
     <string name="button_apply">Apply</string>
+    <string name="no_device">None</string>
+
+    <!-- Button labels -->
+    <!-- &lt; == < -->
+    <!-- &gt; == > -->
+    <string name="btn_coarse_left">&lt;&lt;</string>
+    <string name="btn_fine_left">&lt;</string>
+    <string name="btn_stop">Stop</string>
+    <string name="btn_fine_right">&gt;</string>
+    <string name="btn_coarse_right">&gt;&gt;</string>
+
+    <!-- Description for Status LED -->
+    <string name="status_led">Status LED</string>
 
 </resources>

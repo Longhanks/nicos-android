@@ -17,10 +17,13 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.sothree.slidinguppanel.SlidingUpPanelLayout;
 
@@ -32,6 +35,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.tum.frm2.nicos_android.nicos.ConnectionData;
 import de.tum.frm2.nicos_android.nicos.Device;
+import de.tum.frm2.nicos_android.nicos.NicosStatus;
 import de.tum.frm2.nicos_android.util.NicosCallbackHandler;
 import de.tum.frm2.nicos_android.nicos.NicosClient;
 import de.tum.frm2.nicos_android.R;
@@ -45,7 +49,16 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
     private Handler _uiThread;
     private boolean _visible;
     private boolean _canAccessDevices;
-    SlidingUpPanelLayout _slidingUpPanelLayout;
+    private SlidingUpPanelLayout _slidingUpPanelLayout;
+    private TextView _currentDeviceTextView;
+    private TextView _currentDeviceValueTextView;
+    private ImageView _currentDeviceStatusImageView;
+    private Button _coarseStepLeftButton;
+    private Button _fineStepLeftButton;
+    private Button _stopButton;
+    private Button _fineStepRightButton;
+    private Button _coarseStepRightButton;
+    private Device _currentDevice;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -110,6 +123,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         // Reference to the bottom slider panel.
         _slidingUpPanelLayout = (SlidingUpPanelLayout) findViewById(R.id.sliding_layout);
 
+        // Change behavior of Panel when state changes.
         _slidingUpPanelLayout.addPanelSlideListener(new SlidingUpPanelLayout.PanelSlideListener() {
             @Override
             public void onPanelSlide(View panel, float slideOffset) {
@@ -130,6 +144,31 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                     fineStepEditText.setImeOptions(EditorInfo.IME_ACTION_DONE);
                 }
 
+            }
+        });
+
+        // Reference to current device and the 3 subviews of currentDeviceView.
+        // That means the name label, value label and status image.
+        _currentDevice = null;
+        _currentDeviceTextView = (TextView) findViewById(R.id.deviceNameTextView);
+        _currentDeviceValueTextView = (TextView) findViewById(R.id.deviceValueTextView);
+        _currentDeviceStatusImageView = (ImageView) findViewById(R.id.statusledView);
+
+        // References to the 5 control buttons.
+        _coarseStepLeftButton = (Button) findViewById(R.id.coarseStepLeftButton);
+        _fineStepLeftButton = (Button) findViewById(R.id.fineStepLeftButton);
+        _stopButton = (Button) findViewById(R.id.stopButton);
+        _fineStepRightButton = (Button) findViewById(R.id.fineStepRightButton);
+        _coarseStepRightButton = (Button) findViewById(R.id.coarseStepRightButton);
+        _slidingUpPanelLayout.setEnabled(false);
+
+
+        // Change behavior when clicking/tapping on a device.
+        deviceListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
+                Device device = (Device) deviceListView.getItemAtPosition(position);
+                onDeviceSelected(device);
             }
         });
 
@@ -267,6 +306,46 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         else if (signal.equals("cache")) {
             on_client_cache((Object[]) data);
         }
+    }
+
+    private void onDeviceSelected(Device device) {
+        System.out.println(device.getCacheName());
+        Object limits = device.getParam("userlimits");
+        Object mapping = device.getParam("mapping");
+        if (limits == null && mapping == null) {
+            Toast.makeText(getApplicationContext(), "Cannot move " + device.getName(),
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        _currentDevice = device;
+        _currentDeviceTextView.setText(device.getName());
+        _currentDeviceValueTextView.setText(DeviceViewAdapter.getFormattedDeviceValue(device));
+        _currentDeviceStatusImageView.setImageResource(
+                NicosStatus.getStatusResource(device.getStatus()));
+
+        if (limits != null) {
+            Object min = ((Object[]) limits)[0];
+            Object max = ((Object[]) limits)[1];
+            System.out.println("min/max: " + min.getClass());
+        }
+        else {
+            HashMap map = (HashMap) mapping;
+            for (Object key : map.keySet()) {
+                System.out.print("--- ");
+                System.out.print(key);
+                System.out.print(": ");
+                System.out.println(map.get(key));
+            }
+        }
+        System.out.println(" ");
+
+        _coarseStepLeftButton.setEnabled(true);
+        _fineStepLeftButton.setEnabled(true);
+        _stopButton.setEnabled(true);
+        _fineStepRightButton.setEnabled(true);
+        _coarseStepRightButton.setEnabled(true);
+        _slidingUpPanelLayout.setEnabled(true);
     }
 
     private void on_client_connected() {
@@ -431,6 +510,10 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 @Override
                 public void run() {
                     curdev.setStatus(status);
+                    if (_currentDevice == curdev) {
+                        _currentDeviceStatusImageView.setImageResource(
+                                NicosStatus.getStatusResource(status));
+                    }
                     _devicesAdapter.notifyDataSetChanged();
                 }
             });
@@ -440,6 +523,10 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 @Override
                 public void run() {
                     curdev.setValue(value);
+                    if (_currentDevice == curdev) {
+                        _currentDeviceValueTextView.setText(
+                                DeviceViewAdapter.getFormattedDeviceValue(curdev));
+                    }
                     _devicesAdapter.notifyDataSetChanged();
                 }
             });
@@ -450,6 +537,10 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 @Override
                 public void run() {
                     curdev.addParam("fmtstr", fmt);
+                    if (_currentDevice == curdev) {
+                        _currentDeviceValueTextView.setText(
+                                DeviceViewAdapter.getFormattedDeviceValue(curdev));
+                    }
                     _devicesAdapter.notifyDataSetChanged();
                 }
             });

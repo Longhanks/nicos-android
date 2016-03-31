@@ -12,8 +12,9 @@ import java.util.ArrayList;
 
 import de.tum.frm2.nicos_android.R;
 import de.tum.frm2.nicos_android.nicos.Device;
-import de.tum.frm2.nicos_android.nicos.status;
+import de.tum.frm2.nicos_android.nicos.NicosStatus;
 import de.tum.frm2.nicos_android.util.ReadOnlyList;
+
 
 public class DeviceViewAdapter extends ArrayAdapter<Device> {
     private final Context context;
@@ -40,42 +41,24 @@ public class DeviceViewAdapter extends ArrayAdapter<Device> {
         Device device = devices.get(position);
 
         deviceNameTextView.setText(device.getName());
-        String format = (String) device.getParam("fmtstr");
-        String unit = (String) device.getParam("unit");
-        if (unit == null) {
-            unit = "";
-        }
-        else {
-            unit = " " + unit;
-        }
-        deviceValueTextView.setText(formatValue(device.getValue(), format) + unit);
+        deviceValueTextView.setText(getFormattedDeviceValue(device));
+        statusledView.setImageResource(NicosStatus.getStatusResource(device.getStatus()));
 
-        switch (device.getStatus()) {
-            case status.OK:
-                statusledView.setImageResource(R.drawable.simplegreen);
-                break;
-            case status.WARN:
-                statusledView.setImageResource(R.drawable.simplewarn);
-                break;
-            case status.BUSY:
-                statusledView.setImageResource(R.drawable.simpleyellow);
-                break;
-            case status.UNKNOWN:
-                statusledView.setImageResource(R.drawable.simplewhite);
-                break;
-            case status.ERROR:
-                statusledView.setImageResource(R.drawable.simplered);
-                break;
-            case status.NOTREACHED:
-                statusledView.setImageResource(R.drawable.simplered);
-                break;
-            default:
-                statusledView.setImageResource(R.drawable.simplegreen);
-        }
         return deviceView;
     }
 
-    public String formatValue(Object value, String fmt) {
+    public static String getFormattedDeviceValue(Device device) {
+        String format = (String) device.getParam("fmtstr");
+        String unit = (String) device.getParam("unit");
+        return formatValue(device.getValue(), format, unit);
+    }
+
+    private static String formatValue(Object value, String fmt, String unit) {
+        if (unit == null) {
+            unit = "";
+        } else {
+            unit = " " + unit;
+        }
         if (value != null) {
             String formatted;
 
@@ -157,7 +140,7 @@ public class DeviceViewAdapter extends ArrayAdapter<Device> {
             catch (Exception e) {
                 formatted = value.toString();
             }
-            return formatted;
+            return formatted + unit;
         }
         return "None";
     }
