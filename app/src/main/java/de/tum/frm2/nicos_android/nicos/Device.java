@@ -7,6 +7,7 @@ public class Device {
     private String cacheName;
     private Object value;
     private int status;
+    private Class valuetype;
     private HashMap<String, Object> params;
 
     public Device(String name, String cacheName) {
@@ -14,6 +15,7 @@ public class Device {
         this.cacheName = cacheName;
         value = null;
         status = -1;
+        valuetype = null;
         params = new HashMap<String, Object>();
     }
 
@@ -35,6 +37,14 @@ public class Device {
 
     public int getStatus() {
         return status;
+    }
+
+    public Class getValuetype() {
+        return valuetype;
+    }
+
+    public void setValuetype(Class valuetype) {
+        this.valuetype = valuetype;
     }
 
     public void setStatus(int status) {

@@ -27,12 +27,17 @@ import android.widget.Toast;
 
 import com.sothree.slidinguppanel.SlidingUpPanelLayout;
 
+import net.razorvine.pickle.objects.ClassDict;
+import net.razorvine.pickle.objects.ClassDictConstructor;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import de.tum.frm2.nicos_android.errors.CommunicationError;
+import de.tum.frm2.nicos_android.errors.ConfigurationError;
 import de.tum.frm2.nicos_android.nicos.ConnectionData;
 import de.tum.frm2.nicos_android.nicos.Device;
 import de.tum.frm2.nicos_android.nicos.NicosStatus;
@@ -421,15 +426,35 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             // Query this device's status.
             Object untypedStatus = NicosClient.getClient().getDeviceStatus(device.getName());
             Object[] tupleStatus;
-            if (untypedStatus == null) {
-                tupleStatus = new Object[] {-1, null};
-            }
-            else {
+
+            try {
                 tupleStatus = (Object[]) untypedStatus;
+                if (tupleStatus == null) {
+                    throw new RuntimeException();
+                }
+            }
+            catch (Exception e) {
+                tupleStatus = new Object[] {-1, null};
             }
 
             final int status = (int) tupleStatus[0];
             final Object value = NicosClient.getClient().getDeviceValue(device.getName());
+
+
+            Object valuetype = NicosClient.getClient().getDeviceValuetype(device.getName());
+
+            // Query value types.
+            if (valuetype.getClass() == ClassDictConstructor.class) {
+                // Java ô.o
+                Object[] o = {};
+                ClassDict s = ((ClassDict) ((ClassDictConstructor) valuetype).construct(o));
+                s.__setstate__(new HashMap<String, Object>());
+                System.out.println(s.get("__class__"));
+            } else {
+                System.out.println(((ClassDict) valuetype).get("__class__"));
+            }
+            /* TODO: Translate python class (like "__builtin__.float" to Java class and put it into
+             * the device, implement magic to match "nicos.core.params.oneof" etc */
 
             // A runnable to update the device in UI thread with new status + value.
             final Runnable uiChangeValue = new Runnable() {
@@ -447,13 +472,14 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         // We continue here,  although updating all values may not be done yet. But we can already
         // start querying the parameters, they also just update the devices.
         // Whether value or fmtstr get added first doesn't matter: Both force the UI to update
-        // itself. So the latter one always ensures corrent display.
+        // itself. So the latter one always ensures correct display.
         for (final Device device : _moveables) {
             ArrayList<Object> params = NicosClient.getClient().getDeviceParams(
                     device.getCacheName());
             if (params == null) {
                 continue;
             }
+
             for (Object param : params) {
                 final Object[] tuple = (Object[]) param;
                 // Split device name from parameter name.

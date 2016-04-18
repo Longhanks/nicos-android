@@ -20,6 +20,6 @@ public class ConfigurationError {
 
     @Override
     public String toString() {
-        return "CommunicationError";
+        return "ConfigurationError";
     }
 }
