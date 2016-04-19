@@ -314,25 +314,24 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
     }
 
     private void onDeviceSelected(Device device) {
-        System.out.println(device.getCacheName());
         Object limits = device.getParam("userlimits");
         Object mapping = device.getParam("mapping");
         if (limits == null && mapping == null) {
-            Toast.makeText(getApplicationContext(), "Cannot move " + device.getName(),
-                    Toast.LENGTH_SHORT).show();
+            Toast.makeText(getApplicationContext(), "Cannot move " + device.getName() +
+                    ": Neither abslimit nor mapping known", Toast.LENGTH_SHORT).show();
             return;
         }
 
         _currentDevice = device;
         _currentDeviceTextView.setText(device.getName());
-        _currentDeviceValueTextView.setText(DeviceViewAdapter.getFormattedDeviceValue(device));
+        _currentDeviceValueTextView.setText(device.getFormattedValue());
         _currentDeviceStatusImageView.setImageResource(
                 NicosStatus.getStatusResource(device.getStatus()));
 
         if (limits != null) {
             Object min = ((Object[]) limits)[0];
             Object max = ((Object[]) limits)[1];
-            System.out.println("min/max: " + min.getClass());
+            System.out.println("min: " + min.toString() + ", max: " + max.toString());
         }
         else {
             HashMap map = (HashMap) mapping;
@@ -343,7 +342,6 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 System.out.println(map.get(key));
             }
         }
-        System.out.println(" ");
 
         _coarseStepLeftButton.setEnabled(true);
         _fineStepLeftButton.setEnabled(true);
@@ -440,21 +438,44 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             final int status = (int) tupleStatus[0];
             final Object value = NicosClient.getClient().getDeviceValue(device.getName());
 
-
-            Object valuetype = NicosClient.getClient().getDeviceValuetype(device.getName());
-
             // Query value types.
+            Object valuetype = NicosClient.getClient().getDeviceValuetype(device.getName());
+            String pyclass;
+            final Class valueclass;
+
             if (valuetype.getClass() == ClassDictConstructor.class) {
                 // Java ô.o
                 Object[] o = {};
                 ClassDict s = ((ClassDict) ((ClassDictConstructor) valuetype).construct(o));
                 s.__setstate__(new HashMap<String, Object>());
-                System.out.println(s.get("__class__"));
+                pyclass = (String) s.get("__class__");
             } else {
-                System.out.println(((ClassDict) valuetype).get("__class__"));
+                pyclass = (String) ((ClassDict) valuetype).get("__class__");
             }
-            /* TODO: Translate python class (like "__builtin__.float" to Java class and put it into
-             * the device, implement magic to match "nicos.core.params.oneof" etc */
+
+            switch (pyclass) {
+                case "__builtin__.float":
+                    valueclass = Double.class;
+                    break;
+                case "__builtin__.double":
+                    valueclass = Double.class;
+                    break;
+                case "nicos.core.params.tupleof":
+                    valueclass = Object[].class;
+                    break;
+                case "nicos.core.params.oneof":
+                    valueclass = String.class;
+                    break;
+                case "nicos.core.params.oneofdict":
+                    valueclass = String.class;
+                    break;
+                case "nicos.core.params.limits":
+                    valueclass = Object[].class;
+                    break;
+                default:
+                    valueclass = String.class;
+                    break;
+            }
 
             // A runnable to update the device in UI thread with new status + value.
             final Runnable uiChangeValue = new Runnable() {
@@ -462,6 +483,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 public void run() {
                     device.setStatus(status);
                     device.setValue(value);
+                    device.setValuetype(valueclass);
                     _devicesAdapter.notifyDataSetChanged();
                 }
             };
@@ -548,10 +570,10 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    curdev.setValue(value);
+                    curdev.setValueFromCache(value.toString());
                     if (_currentDevice == curdev) {
                         _currentDeviceValueTextView.setText(
-                                DeviceViewAdapter.getFormattedDeviceValue(curdev));
+                                curdev.getFormattedValue());
                     }
                     _devicesAdapter.notifyDataSetChanged();
                 }
@@ -565,7 +587,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                     curdev.addParam("fmtstr", fmt);
                     if (_currentDevice == curdev) {
                         _currentDeviceValueTextView.setText(
-                                DeviceViewAdapter.getFormattedDeviceValue(curdev));
+                                curdev.getFormattedValue());
                     }
                     _devicesAdapter.notifyDataSetChanged();
                 }
