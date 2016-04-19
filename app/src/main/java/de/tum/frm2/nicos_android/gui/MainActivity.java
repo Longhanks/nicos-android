@@ -36,10 +36,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import de.tum.frm2.nicos_android.errors.CommunicationError;
-import de.tum.frm2.nicos_android.errors.ConfigurationError;
 import de.tum.frm2.nicos_android.nicos.ConnectionData;
 import de.tum.frm2.nicos_android.nicos.Device;
+import de.tum.frm2.nicos_android.nicos.DeviceStatus;
 import de.tum.frm2.nicos_android.nicos.NicosStatus;
 import de.tum.frm2.nicos_android.util.NicosCallbackHandler;
 import de.tum.frm2.nicos_android.nicos.NicosClient;
@@ -54,6 +53,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
     private Handler _uiThread;
     private boolean _visible;
     private boolean _canAccessDevices;
+    private int _current_status;
     private SlidingUpPanelLayout _slidingUpPanelLayout;
     private TextView _currentDeviceTextView;
     private TextView _currentDeviceValueTextView;
@@ -311,6 +311,10 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         else if (signal.equals("cache")) {
             on_client_cache((Object[]) data);
         }
+        else if (signal.equals("status")) {
+            // data = tuple of (status, linenumber)
+            _current_status = (int) ((Object[]) data)[0];
+        }
     }
 
     private void onDeviceSelected(Device device) {
@@ -326,7 +330,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         _currentDeviceTextView.setText(device.getName());
         _currentDeviceValueTextView.setText(device.getFormattedValue());
         _currentDeviceStatusImageView.setImageResource(
-                NicosStatus.getStatusResource(device.getStatus()));
+                DeviceStatus.getStatusResource(device.getStatus()));
 
         if (limits != null) {
             Object min = ((Object[]) limits)[0];
@@ -363,6 +367,8 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             return;
         }
         final HashMap<String, Object> state = (HashMap<String, Object>) untyped_state;
+        Object[] statusTuple = (Object[]) state.get("status");
+        _current_status = (int) statusTuple[0];
 
         // Extract device list from status. We need this for the device's "real" name (with upper
         // case letters).
@@ -560,7 +566,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                     curdev.setStatus(status);
                     if (_currentDevice == curdev) {
                         _currentDeviceStatusImageView.setImageResource(
-                                NicosStatus.getStatusResource(status));
+                                DeviceStatus.getStatusResource(status));
                     }
                     _devicesAdapter.notifyDataSetChanged();
                 }
