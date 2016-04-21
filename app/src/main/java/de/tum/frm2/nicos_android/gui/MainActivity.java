@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -39,6 +40,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import de.tum.frm2.nicos_android.nicos.ConnectionData;
 import de.tum.frm2.nicos_android.nicos.Device;
 import de.tum.frm2.nicos_android.nicos.DeviceStatus;
+import de.tum.frm2.nicos_android.nicos.NicosMessageLevel;
 import de.tum.frm2.nicos_android.nicos.NicosStatus;
 import de.tum.frm2.nicos_android.util.NicosCallbackHandler;
 import de.tum.frm2.nicos_android.nicos.NicosClient;
@@ -63,6 +65,8 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
     private Button _stopButton;
     private Button _fineStepRightButton;
     private Button _coarseStepRightButton;
+    private EditText _coarseStepEditText;
+    private EditText _fineStepEditText;
     private Device _currentDevice;
 
     @Override
@@ -73,7 +77,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         setSupportActionBar(toolbar);
 
         // Set up the container and its adapter for devices.
-        _moveables = new ArrayList<Device>();
+        _moveables = new ArrayList<>();
         View content_main = findViewById(R.id.content_main);
         _devicesAdapter = new DeviceViewAdapter(MainActivity.this,
                 _moveables);
@@ -93,19 +97,19 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 LoginActivity.MESSAGE_CONNECTION_DATA);
 
         // References to the 'steps' views.
-        final EditText coarseStepEditText = (EditText) findViewById(R.id.coarseStepEditText);
-        final EditText fineStepEditText = (EditText) findViewById(R.id.fineStepEditText);
+        _coarseStepEditText = (EditText) findViewById(R.id.coarseStepEditText);
+        _fineStepEditText = (EditText) findViewById(R.id.fineStepEditText);
         final Button applyButton = (Button) findViewById(R.id.applyButton);
 
         // When clickking 'enter' in the first EditText, switch to the next one.
-        coarseStepEditText.setNextFocusDownId(R.id.fineStepEditText);
+        _coarseStepEditText.setNextFocusDownId(R.id.fineStepEditText);
 
         // When hitting 'enter' or 'ok' on the keyboard while in the last EditText, apply changes.
-        fineStepEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+        _fineStepEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int actionID, KeyEvent keyEvent) {
                 if (actionID == EditorInfo.IME_ACTION_DONE) {
-                    fineStepEditText.clearFocus();
+                    _fineStepEditText.clearFocus();
                     applyButton.callOnClick();
                 }
                 return false;
@@ -143,10 +147,10 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                     InputMethodManager manager =
                             (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                     manager.hideSoftInputFromWindow(panel.getWindowToken(), 0);
-                    coarseStepEditText.clearFocus();
-                    coarseStepEditText.setImeOptions(EditorInfo.IME_ACTION_DONE);
-                    fineStepEditText.clearFocus();
-                    fineStepEditText.setImeOptions(EditorInfo.IME_ACTION_DONE);
+                    _coarseStepEditText.clearFocus();
+                    _coarseStepEditText.setImeOptions(EditorInfo.IME_ACTION_DONE);
+                    _fineStepEditText.clearFocus();
+                    _fineStepEditText.setImeOptions(EditorInfo.IME_ACTION_DONE);
                 }
 
             }
@@ -161,10 +165,40 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
 
         // References to the 5 control buttons.
         _coarseStepLeftButton = (Button) findViewById(R.id.coarseStepLeftButton);
+        _coarseStepLeftButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onStepButtonClicked(_coarseStepLeftButton);
+            }
+        });
         _fineStepLeftButton = (Button) findViewById(R.id.fineStepLeftButton);
+        _fineStepLeftButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onStepButtonClicked(_fineStepLeftButton);
+            }
+        });
         _stopButton = (Button) findViewById(R.id.stopButton);
+        _stopButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onStopButtonClicked();
+            }
+        });
         _fineStepRightButton = (Button) findViewById(R.id.fineStepRightButton);
+        _fineStepRightButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onStepButtonClicked(_fineStepRightButton);
+            }
+        });
         _coarseStepRightButton = (Button) findViewById(R.id.coarseStepRightButton);
+        _coarseStepRightButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onStepButtonClicked(_coarseStepRightButton);
+            }
+        });
         _slidingUpPanelLayout.setEnabled(false);
 
 
@@ -219,7 +253,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 color = getResources().getColor(R.color.colorPrimary);
             }
             alertDialog.show();
-            alertDialog.getButton(alertDialog.BUTTON_NEUTRAL).setTextColor(color);
+            alertDialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(color);
             return true;
         }
 
@@ -279,7 +313,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    AlertDialog alertDialog = null;
+                    AlertDialog alertDialog;
                     try {
                         alertDialog = new AlertDialog.Builder(MainActivity.this).create();
                         alertDialog.setTitle("Disconnected");
@@ -315,6 +349,78 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             // data = tuple of (status, linenumber)
             _current_status = (int) ((Object[]) data)[0];
         }
+        else if (signal.equals("message")) {
+            final ArrayList msgList = (ArrayList) data;
+            if ((int) msgList.get(2) == NicosMessageLevel.ERROR) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(),
+                                NicosMessageLevel.level2name(NicosMessageLevel.ERROR) + ": " +
+                                        (String) msgList.get(3), Toast.LENGTH_SHORT).show();
+                    }
+                });
+            }
+        }
+        else if (signal.equals("error")) {
+            final String msg = (String) data;
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(getApplicationContext(), (String) msg,
+                            Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+    }
+
+    private void onStopButtonClicked() {
+        exec_command("stop(" + _currentDevice.getName() + ")");
+    }
+
+    private void onStepButtonClicked(Button btn) {
+        // The EditText which needs to be parsed for the correct step.
+        EditText editTextToBeParsed = null;
+        // Whether to multiply by -1 (for right or left steps)
+        short factor = 0;
+
+        if (btn == _coarseStepLeftButton) {
+            editTextToBeParsed = _coarseStepEditText;
+            factor = -1;
+        }
+
+        else if (btn == _fineStepLeftButton) {
+            editTextToBeParsed = _fineStepEditText;
+            factor = -1;
+        }
+
+        else if (btn == _coarseStepRightButton) {
+            editTextToBeParsed = _coarseStepEditText;
+            factor = 1;
+        }
+
+        else if (btn == _fineStepRightButton) {
+            editTextToBeParsed = _fineStepEditText;
+            factor = 1;
+        }
+
+        double step;
+        try {
+            step = Double.parseDouble(editTextToBeParsed.getText().toString());
+        } catch (Exception e) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Toast.makeText(getApplicationContext(),
+                            "Invalid step.", Toast.LENGTH_SHORT).show();
+                }
+            });
+            return;
+        }
+
+        double current = (double) _currentDevice.getValue();
+        double newVal = current + step * factor;
+        exec_command("move(" + _currentDevice.getName() + ", " + String.valueOf(newVal) + ")");
     }
 
     private void onDeviceSelected(Device device) {
@@ -333,9 +439,10 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 DeviceStatus.getStatusResource(device.getStatus()));
 
         if (limits != null) {
-            Object min = ((Object[]) limits)[0];
-            Object max = ((Object[]) limits)[1];
-            System.out.println("min: " + min.toString() + ", max: " + max.toString());
+            Object o_max = ((Object[]) limits)[1];
+            double max = (double) o_max;
+            _coarseStepEditText.setText(String.valueOf(max / 5));
+            _fineStepEditText.setText(String.valueOf(max / 10));
         }
         else {
             HashMap map = (HashMap) mapping;
@@ -532,6 +639,72 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             }
         }
         return null;
+    }
+
+    private void exec_command(final String command) {
+        if (!(_current_status == NicosStatus.STATUS_IDLE ||
+                _current_status == NicosStatus.STATUS_IDLEEXC)) {
+            // Server is not idle.
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    DialogInterface.OnClickListener dialogClickListener =
+                            new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            switch (which) {
+                                case DialogInterface.BUTTON_NEUTRAL:
+                                    new Thread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            NicosClient.getClient().tell("exec", command);
+                                        }
+                                    }).start();
+                                    break;
+                                case DialogInterface.BUTTON_NEGATIVE:
+                                    return;
+                                case DialogInterface.BUTTON_POSITIVE:
+                                    new Thread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            NicosClient.getClient().run(command);
+                                        }
+                                    }).start();
+                                    break;
+                            }
+                        }
+                    };
+
+                    AlertDialog.Builder builder = new AlertDialog.Builder(MainActivity.this);
+                    builder.setMessage("A script is currently running. What do you want to do?");
+                    builder.setNeutralButton("Execute now!", dialogClickListener);
+                    builder.setNegativeButton("Cancel", dialogClickListener);
+                    builder.setPositiveButton("Queue script", dialogClickListener);
+                    int version = Build.VERSION.SDK_INT;
+                    int color;
+                    if (version >= 23) {
+                        color = ContextCompat.getColor(MainActivity.this, R.color.colorPrimary);
+                    }
+                    else {
+                        color = getResources().getColor(R.color.colorPrimary);
+                    }
+                    AlertDialog dlg = builder.create();
+                    dlg.show();
+                    dlg.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(color);
+                    dlg.getButton(AlertDialog.BUTTON_NEGATIVE).setTextColor(Color.RED);
+                    dlg.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(color);
+                }
+            });
+        }
+
+        else {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    NicosClient.getClient().run(command);
+                }
+            }).start();
+        }
     }
 
     private void on_client_cache(Object[] data) {

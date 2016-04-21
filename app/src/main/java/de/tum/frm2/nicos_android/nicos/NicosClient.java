@@ -120,7 +120,8 @@ public class NicosClient {
     private NicosClient() {
         // private constructor -> Singleton
         Security.insertProviderAt(new org.spongycastle.jce.provider.BouncyCastleProvider(), 1);
-        callbackHandlers = Collections.synchronizedList(new CopyOnWriteArrayList<NicosCallbackHandler>());
+        callbackHandlers = Collections.synchronizedList(
+                new CopyOnWriteArrayList<NicosCallbackHandler>());
         socket = null;
         eventSocket = null;
         connected = false;
