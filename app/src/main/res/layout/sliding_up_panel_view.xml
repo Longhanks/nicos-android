@@ -24,6 +24,7 @@
                 android:hint="@string/prompt_coarse_steps"
                 android:inputType="number|numberSigned|numberDecimal"
                 android:maxLines="1"
+                android:nextFocusDown="@+id/fineStepEditText"
                 android:singleLine="true" />
 
         </android.support.design.widget.TextInputLayout>
@@ -48,8 +49,8 @@
 
         <Button
             style="?android:attr/buttonStyleSmall"
-            android:text="@string/button_apply"
-            android:id="@+id/applyButton"
+            android:text="@string/btn_save_config"
+            android:id="@+id/saveConfigButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_below="@+id/fineStepTextInputLayout"

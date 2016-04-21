@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -35,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.tum.frm2.nicos_android.nicos.ConnectionData;
@@ -56,6 +58,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
     private boolean _visible;
     private boolean _canAccessDevices;
     private int _current_status;
+    private String _uniquePrefix;
     private SlidingUpPanelLayout _slidingUpPanelLayout;
     private TextView _currentDeviceTextView;
     private TextView _currentDeviceValueTextView;
@@ -95,14 +98,12 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
 
         ConnectionData connData = (ConnectionData) getIntent().getSerializableExtra(
                 LoginActivity.MESSAGE_CONNECTION_DATA);
+        _uniquePrefix = connData.getHost() + connData.getUser();
 
         // References to the 'steps' views.
         _coarseStepEditText = (EditText) findViewById(R.id.coarseStepEditText);
         _fineStepEditText = (EditText) findViewById(R.id.fineStepEditText);
-        final Button applyButton = (Button) findViewById(R.id.applyButton);
-
-        // When clickking 'enter' in the first EditText, switch to the next one.
-        _coarseStepEditText.setNextFocusDownId(R.id.fineStepEditText);
+        final Button saveConfigButton = (Button) findViewById(R.id.saveConfigButton);
 
         // When hitting 'enter' or 'ok' on the keyboard while in the last EditText, apply changes.
         _fineStepEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -110,14 +111,14 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             public boolean onEditorAction(TextView textView, int actionID, KeyEvent keyEvent) {
                 if (actionID == EditorInfo.IME_ACTION_DONE) {
                     _fineStepEditText.clearFocus();
-                    applyButton.callOnClick();
+                    saveConfigButton.callOnClick();
                 }
                 return false;
             }
         });
 
         // Clicked the 'apply' button.
-        applyButton.setOnClickListener(new View.OnClickListener() {
+        saveConfigButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 view.requestFocus();
@@ -125,7 +126,21 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 InputMethodManager manager =
                         (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                 manager.hideSoftInputFromWindow(view.getWindowToken(), 0);
-                // TODO: Implement applying steps!
+
+                // Try saving the steps, if they are valid. Else, just ignore saving.
+                SharedPreferences.Editor editor = getPreferences(Context.MODE_PRIVATE).edit();
+                try {
+                    double coarse = Double.parseDouble(_coarseStepEditText.getText().toString());
+                    double fine = Double.parseDouble(_fineStepEditText.getText().toString());
+                    String coarseKey = _uniquePrefix + _currentDevice.getName() + "coarse";
+                    String fineKey = _uniquePrefix + _currentDevice.getName() + "fine";
+                    editor.putLong(coarseKey, Double.doubleToRawLongBits(coarse));
+                    editor.putLong(fineKey, Double.doubleToRawLongBits(fine));
+                    editor.commit();
+                    Toast.makeText(MainActivity.this, "Successfully saved configuration.",
+                            Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                }
             }
         });
 
@@ -296,7 +311,40 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
     @Override
     protected void onResume() {
         super.onResume();
+        _slidingUpPanelLayout.setEnabled(true);
+        _slidingUpPanelLayout.setPanelState(SlidingUpPanelLayout.PanelState.COLLAPSED);
+        _slidingUpPanelLayout.setEnabled(false);
         _visible = true;
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle instance) {
+        if (_currentDevice != null) {
+            instance.putString("currentDevice", _currentDevice.getName());
+        }
+        super.onSaveInstanceState(instance);
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle instance) {
+        final String previousDeviceName = instance.getString("currentDevice");
+        if (previousDeviceName != null) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    while (!_canAccessDevices) {
+                        ;
+                    }
+                    _uiThread.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            onDeviceSelected(getDeviceByCacheName(previousDeviceName.toLowerCase()));
+                        }
+                    });
+                }
+            }).start();
+        }
+        super.onRestoreInstanceState(instance);
     }
 
     @Override
@@ -428,7 +476,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         Object mapping = device.getParam("mapping");
         if (limits == null && mapping == null) {
             Toast.makeText(getApplicationContext(), "Cannot move " + device.getName() +
-                    ": Neither abslimit nor mapping known", Toast.LENGTH_SHORT).show();
+                    ": Limits unknown", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -441,17 +489,25 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         if (limits != null) {
             Object o_max = ((Object[]) limits)[1];
             double max = (double) o_max;
-            _coarseStepEditText.setText(String.valueOf(max / 5));
-            _fineStepEditText.setText(String.valueOf(max / 10));
+
+            // Try to read a value from the preferences.
+            SharedPreferences prefs = getPreferences(Context.MODE_PRIVATE);
+            String coarseKey = _uniquePrefix + _currentDevice.getName() + "coarse";
+            String fineKey = _uniquePrefix + _currentDevice.getName() + "fine";
+            if (prefs.contains(coarseKey) && prefs.contains(fineKey)) {
+                long dec_coarse = prefs.getLong(coarseKey, 0);
+                long dec_fine = prefs.getLong(fineKey, 0);
+                _coarseStepEditText.setText(String.valueOf(Double.longBitsToDouble(dec_coarse)));
+                _fineStepEditText.setText(String.valueOf(Double.longBitsToDouble(dec_fine)));
+            }
+            else {
+                // infer default steps from the max limit.
+                _coarseStepEditText.setText(String.valueOf(max / 5));
+                _fineStepEditText.setText(String.valueOf(max / 10));
+            }
         }
         else {
-            HashMap map = (HashMap) mapping;
-            for (Object key : map.keySet()) {
-                System.out.print("--- ");
-                System.out.print(key);
-                System.out.print(": ");
-                System.out.println(map.get(key));
-            }
+            // TODO: Implement devices with mapping!
         }
 
         _coarseStepLeftButton.setEnabled(true);
@@ -468,7 +524,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 (ArrayList<String>) NicosClient.getClient().getDeviceList(
                         "nicos.core.device.Moveable", true, null, null);
 
-        // Ask for current status.
+        // Ask for current daemon status.
         Object untyped_state = NicosClient.getClient().ask("getstatus", null);
         if (untyped_state == null) {
             return;
@@ -477,62 +533,109 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         Object[] statusTuple = (Object[]) state.get("status");
         _current_status = (int) statusTuple[0];
 
-        // Extract device list from status. We need this for the device's "real" name (with upper
-        // case letters).
-        final AtomicBoolean uiAddDevicesDone = new AtomicBoolean(false);
-        final Runnable uiAddDevices = new Runnable() {
+        // Fill _moveables.
+        Runnable uiAddMoveables = new Runnable() {
             @Override
             public void run() {
-                // Block access to this runnable.
                 synchronized (this) {
+                    // Filter device list for moveables.
                     ArrayList<String> devlist = (ArrayList<String>) state.get("devices");
                     for (String device : devlist) {
                         String cachekey = device.toLowerCase();
                         if (!lowercaseMoveables.contains(cachekey)) {
                             continue;
                         }
-                        // Create device.
-                        final Device moveable = new Device(device, cachekey);
-
-                        // Sort devices in place.
+                        // Create device and add it.
+                        Device moveable = new Device(device, cachekey);
                         _moveables.add(moveable);
-                        Collections.sort(_moveables, new Comparator<Device>() {
-                            @Override
-                            public int compare(Device lhs, Device rhs) {
-                                return lhs.getCacheName().compareTo(rhs.getCacheName());
-                            }
-                        });
 
-                        // Notify adapter to update UI.
-                        _devicesAdapter.notifyDataSetChanged();
                     }
-                    uiAddDevicesDone.set(true);
-                    // Tell other threads they can now safely access this runnable.
+
+                    // Sort devices in place.
+                    Collections.sort(_moveables, new Comparator<Device>() {
+                        @Override
+                        public int compare(Device lhs, Device rhs) {
+                            return lhs.getCacheName().compareTo(rhs.getCacheName());
+                        }
+                    });
                     notify();
                 }
             }
         };
 
-        // Ask ui thread to run the runnable, we wait until ui thread is done.
-        _uiThread.post(uiAddDevices);
-        // Try to accesss runnable.
-        synchronized (uiAddDevices) {
-            while (!uiAddDevicesDone.get()) {
+        synchronized (uiAddMoveables) {
+            _uiThread.post(uiAddMoveables);
+            try {
+                uiAddMoveables.wait();
+            } catch (InterruptedException e) {
+                return;
+            }
+        }
+
+        // Query parameters.
+        for (final Device device : _moveables) {
+            final ArrayList<Object> params = NicosClient.getClient().getDeviceParams(
+                    device.getCacheName());
+            if (params == null) {
+                continue;
+            }
+
+            // Add params to device.
+            Runnable uiAddParams = new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (this) {
+                        for (Object param : params) {
+                            Object[] tuple = (Object[]) param;
+                            // Split device name from parameter name.
+                            // e.g. t/fmtstr -> fmtstr
+                            String[] keyParts = ((String) tuple[0]).split(("/"));
+                            device.addParam(keyParts[1], tuple[1]);
+                        }
+                        notify();
+                    }
+                }
+            };
+
+            synchronized (uiAddParams) {
+                _uiThread.post(uiAddParams);
                 try {
-                    // Wait for runnable to call notify().
-                    uiAddDevices.wait();
+                    uiAddParams.wait();
                 } catch (InterruptedException e) {
-                    // Thread cancelled -> Activity probably destroyed.
+                    return;
                 }
             }
         }
 
-        // UI thread is done adding devices.
-        _canAccessDevices = true;
+        // Remove all moveables without abslimits.
+        Runnable uiRemoveDevicesWithoutLimits = new Runnable() {
+            @Override
+            public void run() {
+                synchronized (this) {
+                    Iterator<Device> it = _moveables.iterator();
+                    while (it.hasNext()) {
+                        Device device = it.next();
+                        if (device.getParam("abslimits") == null) {
+                            it.remove();
+                        }
+                    }
+                    _devicesAdapter.notifyDataSetChanged();
+                    _canAccessDevices = true;
+                    notify();
+                }
+            }
+        };
+
+        synchronized (uiRemoveDevicesWithoutLimits) {
+            _uiThread.post(uiRemoveDevicesWithoutLimits);
+            try {
+                uiRemoveDevicesWithoutLimits.wait();
+            } catch (InterruptedException e) {
+                return;
+            }
+        }
 
         // Query statuses and values of all devices.
-
-        // List of currently running runnables that update devices.
         for (final Device device : _moveables) {
             // Query this device's status.
             Object untypedStatus = NicosClient.getClient().getDeviceStatus(device.getName());
@@ -591,43 +694,30 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             }
 
             // A runnable to update the device in UI thread with new status + value.
-            final Runnable uiChangeValue = new Runnable() {
+            Runnable uiChangeValue = new Runnable() {
                 @Override
                 public void run() {
-                    device.setStatus(status);
-                    device.setValue(value);
-                    device.setValuetype(valueclass);
-                    _devicesAdapter.notifyDataSetChanged();
+                    synchronized (this) {
+                        device.setStatus(status);
+                        device.setValue(value);
+                        device.setValuetype(valueclass);
+                        _devicesAdapter.notifyDataSetChanged();
+                        if (_currentDevice == device) {
+                            _currentDeviceValueTextView.setText(
+                                    device.getFormattedValue());
+                        }
+                        notify();
+                    }
                 }
             };
-            // Let UI thread run the runnable.
-            _uiThread.post(uiChangeValue);
-        }
 
-        // We continue here,  although updating all values may not be done yet. But we can already
-        // start querying the parameters, they also just update the devices.
-        // Whether value or fmtstr get added first doesn't matter: Both force the UI to update
-        // itself. So the latter one always ensures correct display.
-        for (final Device device : _moveables) {
-            ArrayList<Object> params = NicosClient.getClient().getDeviceParams(
-                    device.getCacheName());
-            if (params == null) {
-                continue;
-            }
-
-            for (Object param : params) {
-                final Object[] tuple = (Object[]) param;
-                // Split device name from parameter name.
-                // e.g. t/fmtstr -> fmtstr
-                final String[] keyParts = ((String) tuple[0]).split(("/"));
-                _uiThread.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        device.addParam(keyParts[1], tuple[1]);
-                        _devicesAdapter.notifyDataSetChanged();
-                    }
-                });
-
+            synchronized (uiChangeValue) {
+                _uiThread.post(uiChangeValue);
+                try {
+                    uiChangeValue.wait();
+                } catch (InterruptedException e) {
+                    return;
+                }
             }
         }
     }
