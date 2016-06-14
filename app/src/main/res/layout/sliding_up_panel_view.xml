@@ -8,9 +8,97 @@
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:layout_below="@+id/sliding_up_panel_bar"
-        android:layout_centerHorizontal="true">
+        android:layout_above="@+id/relativeLayout">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="fill_parent"
+            android:layout_height="fill_parent"
+            android:layout_below="@+id/sliding_up_panel_bar"
+            android:baselineAligned="false"
+            android:id="@+id/buttonsLayout">
+
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:baselineAligned="false"
+                android:id="@+id/speedButtonsLayout"
+                android:layout_gravity="top"
+                android:layout_weight="1">
+
+                <LinearLayout
+                    android:orientation="vertical"
+                    android:layout_width="match_parent"
+                    android:layout_height="fill_parent"
+                    android:layout_gravity="left"
+                    android:layout_weight="1"
+                    android:id="@+id/leftSpeedButtonsLayout">
+
+                    <Button
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:text="@string/btn_coarse_left"
+                        android:id="@+id/coarseStepLeftButton"
+                        android:layout_gravity="top"
+                        android:layout_weight="1" />
+
+                    <Button
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:text="@string/btn_fine_left"
+                        android:id="@+id/fineStepLeftButton"
+                        android:layout_weight="1"
+                        android:layout_gravity="bottom" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:orientation="vertical"
+                    android:layout_width="match_parent"
+                    android:layout_height="fill_parent"
+                    android:layout_gravity="right"
+                    android:layout_weight="1"
+                    android:id="@+id/rightSpeedButtonsLayout">
+
+                    <Button
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:text="@string/btn_coarse_right"
+                        android:id="@+id/coarseStepRightButton"
+                        android:layout_gravity="top"
+                        android:layout_weight="1" />
+
+                    <Button
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:text="@string/btn_fine_right"
+                        android:id="@+id/fineStepRightButton"
+                        android:layout_gravity="bottom"
+                        android:layout_weight="1" />
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <Button
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:text="@string/btn_stop"
+                android:id="@+id/stopButton"
+                android:layout_gravity="bottom"
+                android:layout_weight="1" />
+        </LinearLayout>
+    </RelativeLayout>
+
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@+id/buttonsLayout"
+        android:layout_alignParentBottom="true"
+        android:id="@+id/relativeLayout">
 
         <android.support.design.widget.TextInputLayout
             android:layout_width="match_parent"
@@ -47,14 +135,6 @@
 
         </android.support.design.widget.TextInputLayout>
 
-        <Button
-            style="?android:attr/buttonStyleSmall"
-            android:text="@string/btn_save_config"
-            android:id="@+id/saveConfigButton"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/fineStepTextInputLayout"
-            android:layout_alignParentEnd="true" />
     </RelativeLayout>
 
 

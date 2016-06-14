@@ -13,6 +13,8 @@ import android.os.Looper;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -24,6 +26,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -37,7 +40,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import de.tum.frm2.nicos_android.nicos.ConnectionData;
 import de.tum.frm2.nicos_android.nicos.Device;
@@ -103,49 +105,47 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         // References to the 'steps' views.
         _coarseStepEditText = (EditText) findViewById(R.id.coarseStepEditText);
         _fineStepEditText = (EditText) findViewById(R.id.fineStepEditText);
-        final Button saveConfigButton = (Button) findViewById(R.id.saveConfigButton);
 
-        // When hitting 'enter' or 'ok' on the keyboard while in the last EditText, apply changes.
-        _fineStepEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+        TextView.OnEditorActionListener onEditorActionListener = new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int actionID, KeyEvent keyEvent) {
                 if (actionID == EditorInfo.IME_ACTION_DONE) {
                     _fineStepEditText.clearFocus();
-                    saveConfigButton.callOnClick();
+                    // Hide keyboard.
+                    InputMethodManager manager =
+                            (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    manager.hideSoftInputFromWindow(textView.getWindowToken(), 0);
                 }
                 return false;
             }
-        });
+        };
 
-        // Clicked the 'apply' button.
-        saveConfigButton.setOnClickListener(new View.OnClickListener() {
+        // When hitting 'enter' or 'ok' on the keyboard while in EditText, apply changes and hide
+        // keyboard.
+        _coarseStepEditText.setOnEditorActionListener(onEditorActionListener);
+        _fineStepEditText.setOnEditorActionListener(onEditorActionListener);
+
+        TextWatcher textWatcher =  new TextWatcher() {
             @Override
-            public void onClick(View view) {
-                view.requestFocus();
-                // Hide keyboard.
-                InputMethodManager manager =
-                        (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                manager.hideSoftInputFromWindow(view.getWindowToken(), 0);
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
 
-                // Try saving the steps, if they are valid. Else, just ignore saving.
-                SharedPreferences.Editor editor = getPreferences(Context.MODE_PRIVATE).edit();
-                try {
-                    double coarse = Double.parseDouble(_coarseStepEditText.getText().toString());
-                    double fine = Double.parseDouble(_fineStepEditText.getText().toString());
-                    String coarseKey = _uniquePrefix + _currentDevice.getName() + "coarse";
-                    String fineKey = _uniquePrefix + _currentDevice.getName() + "fine";
-                    editor.putLong(coarseKey, Double.doubleToRawLongBits(coarse));
-                    editor.putLong(fineKey, Double.doubleToRawLongBits(fine));
-                    editor.commit();
-                    Toast.makeText(MainActivity.this, "Successfully saved configuration.",
-                            Toast.LENGTH_SHORT).show();
-                } catch (Exception e) {
-                }
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {}
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                saveSteps();
             }
-        });
+        };
 
-        // Reference to the bottom slider panel.
+        _coarseStepEditText.addTextChangedListener(textWatcher);
+        _fineStepEditText.addTextChangedListener(textWatcher);
+
+        // Reference to the bottom slider panel + initial height.
         _slidingUpPanelLayout = (SlidingUpPanelLayout) findViewById(R.id.sliding_layout);
+        RelativeLayout currentDeviceLayout = (RelativeLayout) findViewById(R.id.currentDeviceView);
+        currentDeviceLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        _slidingUpPanelLayout.setPanelHeight(currentDeviceLayout.getMeasuredHeight());
 
         // Change behavior of Panel when state changes.
         _slidingUpPanelLayout.addPanelSlideListener(new SlidingUpPanelLayout.PanelSlideListener() {
@@ -333,7 +333,10 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 @Override
                 public void run() {
                     while (!_canAccessDevices) {
-                        ;
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException e) {
+                        }
                     }
                     _uiThread.post(new Runnable() {
                         @Override
@@ -345,6 +348,21 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             }).start();
         }
         super.onRestoreInstanceState(instance);
+    }
+
+    private void saveSteps() {
+        // Try saving the steps, if they are valid. Else, just ignore saving.
+        SharedPreferences.Editor editor = getPreferences(Context.MODE_PRIVATE).edit();
+        try {
+            double coarse = Double.parseDouble(_coarseStepEditText.getText().toString());
+            double fine = Double.parseDouble(_fineStepEditText.getText().toString());
+            String coarseKey = _uniquePrefix + _currentDevice.getName() + "coarse";
+            String fineKey = _uniquePrefix + _currentDevice.getName() + "fine";
+            editor.putLong(coarseKey, Double.doubleToRawLongBits(coarse));
+            editor.putLong(fineKey, Double.doubleToRawLongBits(fine));
+            editor.commit();
+        } catch (Exception e) {
+        }
     }
 
     @Override
