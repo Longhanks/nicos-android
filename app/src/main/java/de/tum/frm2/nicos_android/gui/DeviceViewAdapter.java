@@ -13,8 +13,6 @@ import java.util.ArrayList;
 import de.tum.frm2.nicos_android.R;
 import de.tum.frm2.nicos_android.nicos.Device;
 import de.tum.frm2.nicos_android.nicos.DeviceStatus;
-import de.tum.frm2.nicos_android.nicos.NicosStatus;
-import de.tum.frm2.nicos_android.util.ReadOnlyList;
 
 
 public class DeviceViewAdapter extends ArrayAdapter<Device> {
@@ -44,6 +42,7 @@ public class DeviceViewAdapter extends ArrayAdapter<Device> {
         deviceNameTextView.setText(device.getName());
         deviceValueTextView.setText(device.getFormattedValue());
         statusledView.setImageResource(DeviceStatus.getStatusResource(device.getStatus()));
+        deviceView.setBackgroundColor(DeviceStatus.getStatusColor(device.getStatus()));
 
         return deviceView;
     }

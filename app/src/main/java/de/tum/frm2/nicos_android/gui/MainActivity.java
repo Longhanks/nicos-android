@@ -848,6 +848,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                     if (_currentDevice == curdev) {
                         _currentDeviceStatusImageView.setImageResource(
                                 DeviceStatus.getStatusResource(status));
+                        View currentDeviceView = findViewById(R.id.currentDeviceView);
                     }
                     _devicesAdapter.notifyDataSetChanged();
                 }

@@ -4,19 +4,19 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content" >
 
-    <include layout="@layout/sliding_up_panel_bar" android:id="@+id/sliding_up_panel_bar"/>
+    <include layout="@layout/sample_device_view" android:id="@+id/currentDeviceView"/>
 
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_below="@+id/sliding_up_panel_bar"
+        android:layout_below="@+id/currentDeviceView"
         android:layout_above="@+id/relativeLayout">
 
         <LinearLayout
             android:orientation="vertical"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
-            android:layout_below="@+id/sliding_up_panel_bar"
+            android:layout_below="@+id/currentDeviceView"
             android:baselineAligned="false"
             android:id="@+id/buttonsLayout">
 

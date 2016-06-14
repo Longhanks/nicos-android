@@ -28,4 +28,30 @@ public class DeviceStatus {
                 return R.drawable.simplegreen;
         }
     }
+    
+    public static int getStatusColor(int status) {
+        switch (status) {
+            // Colors for the background are a little lighter that the real ones (commented below)
+            case OK:
+                return 0xFFC1EAC4;
+                // return 0xFF33BC3D;
+            case DeviceStatus.WARN:
+                return 0xFFF938D;
+                // return 0xFFBB8425;
+            case DeviceStatus.BUSY:
+                return 0xFFFFFFb2;
+                // return 0xFFFFFF00;
+            case DeviceStatus.UNKNOWN:
+                return 0xFF929292;
+            case DeviceStatus.ERROR:
+                return 0xFFFFBAB2;
+                // return 0xFFFF1A00;
+            case DeviceStatus.NOTREACHED:
+                return 0xFFFFBAB2;
+            // return 0xFFFF1A00;
+            default:
+                return 0xFFC1EAC4;
+            // return 0xFF33BC3D;
+        }
+    }
 }
