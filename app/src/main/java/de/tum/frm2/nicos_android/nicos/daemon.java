@@ -1,6 +1,26 @@
+//
+// Copyright (C) 2016 Andreas Schulz <andreas.schulz@frm2.tum.de>
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 US
+
+
 package de.tum.frm2.nicos_android.nicos;
 
 // Resembles nicos-core/nicos/protocols/daemon.py
+
+import android.util.SparseArray;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -70,18 +90,19 @@ public class daemon {
             }}
     );
 
-    public static final Map<Byte, String> code2command = Collections.unmodifiableMap(
-            new HashMap<Byte, String>() {{
-                for (String key : command2code.keySet()) {
-                    put(command2code(key), key);
-                }
-            }}
-    );
+    public static final SparseArray<String> code2command;
+    static {
+        code2command = new SparseArray<>();
+        for (String key : command2code.keySet()) {
+            code2command.append(command2code(key), key);
+        }
+    }
 
     public static byte command2code(String command) {
         return command2code.get(command);
     }
 
+    @SuppressWarnings("unused")
     public static String code2command(byte code) {
         return code2command.get(code);
     }
@@ -90,59 +111,59 @@ public class daemon {
             Collections.unmodifiableMap(
                 new HashMap<String, TupleOfTwo<Boolean, Integer>>() {{
                     // a new message arrived
-                    put("message",    new TupleOfTwo<Boolean, Integer>(true,  0x1001));
+                    put("message",    new TupleOfTwo<>(true,  0x1001));
                     // a new request arrived
-                    put("request",    new TupleOfTwo<Boolean, Integer>(true,  0x1002));
+                    put("request",    new TupleOfTwo<>(true,  0x1002));
                     // a request is now being processed
-                    put("processing", new TupleOfTwo<Boolean, Integer>(true,  0x1003));
+                    put("processing", new TupleOfTwo<>(true,  0x1003));
                     // one or more requests have been blocked from execution
-                    put("blocked",    new TupleOfTwo<Boolean, Integer>(true,  0x1004));
+                    put("blocked",    new TupleOfTwo<>(true,  0x1004));
                     // the execution status changed
-                    put("status",     new TupleOfTwo<Boolean, Integer>(true,  0x1005));
+                    put("status",     new TupleOfTwo<>(true,  0x1005));
                     // the watched variables changed
-                    put("watch",      new TupleOfTwo<Boolean, Integer>(true,  0x1006));
+                    put("watch",      new TupleOfTwo<>(true,  0x1006));
                     // the mode changed
-                    put("mode",       new TupleOfTwo<Boolean, Integer>(true,  0x1007));
+                    put("mode",       new TupleOfTwo<>(true,  0x1007));
                     // a new cache value has arrived
-                    put("cache",      new TupleOfTwo<Boolean, Integer>(true,  0x1008));
+                    put("cache",      new TupleOfTwo<>(true,  0x1008));
                     // a new dataset was created
-                    put("dataset",    new TupleOfTwo<Boolean, Integer>(true,  0x1009));
+                    put("dataset",    new TupleOfTwo<>(true,  0x1009));
                     // a new point was added to a dataset
-                    put("datapoint",  new TupleOfTwo<Boolean, Integer>(true,  0x100A));
+                    put("datapoint",  new TupleOfTwo<>(true,  0x100A));
                     // a new fit curve was added to a dataset
-                    put("datacurve",  new TupleOfTwo<Boolean, Integer>(true,  0x100B));
+                    put("datacurve",  new TupleOfTwo<>(true,  0x100B));
                     // new parameters for the data sent with the "livedata" event
-                    put("liveparams", new TupleOfTwo<Boolean, Integer>(true,  0x100C));
+                    put("liveparams", new TupleOfTwo<>(true,  0x100C));
                     // live detector data to display
-                    put("livedata",   new TupleOfTwo<Boolean, Integer>(false, 0x100D));
+                    put("livedata",   new TupleOfTwo<>(false, 0x100D));
                     // a simulation finished with the given result
-                    put("simresult",  new TupleOfTwo<Boolean, Integer>(true,  0x100E));
+                    put("simresult",  new TupleOfTwo<>(true,  0x100E));
                     // request to display given help page
-                    put("showhelp",   new TupleOfTwo<Boolean, Integer>(true,  0x100F));
+                    put("showhelp",   new TupleOfTwo<>(true,  0x100F));
                     // request to execute something on the client side
-                    put("clientexec", new TupleOfTwo<Boolean, Integer>(true,  0x1010));
+                    put("clientexec", new TupleOfTwo<>(true,  0x1010));
                     // a watchdog notification has arrived
-                    put("watchdog",   new TupleOfTwo<Boolean, Integer>(true,  0x1011));
+                    put("watchdog",   new TupleOfTwo<>(true,  0x1011));
                     // the remote-debugging status changed
-                    put("debugging",  new TupleOfTwo<Boolean, Integer>(true,  0x1012));
+                    put("debugging",  new TupleOfTwo<>(true,  0x1012));
                     // a plug-and-play/sample-environment event occurred
-                    put("plugplay",   new TupleOfTwo<Boolean, Integer>(true,  0x1013));
+                    put("plugplay",   new TupleOfTwo<>(true,  0x1013));
                     // a setup was loaded or unloaded
-                    put("setup",      new TupleOfTwo<Boolean, Integer>(true,  0x1014));
+                    put("setup",      new TupleOfTwo<>(true,  0x1014));
                     // a device was created or destroyed
-                    put("device",     new TupleOfTwo<Boolean, Integer>(true,  0x1015));
+                    put("device",     new TupleOfTwo<>(true,  0x1015));
                     // the experiment has changed
-                    put("experiment", new TupleOfTwo<Boolean, Integer>(true,  0x1016));
+                    put("experiment", new TupleOfTwo<>(true,  0x1016));
                 }}
     );
 
-    public static final Map<Integer, String> event2command = Collections.unmodifiableMap(
-            new HashMap<Integer, String>() {{
-                for (String key : command2event.keySet()) {
-                    put(event2command(key), key);
-                }
-            }}
-    );
+    public final static SparseArray<String> event2command;
+    static {
+        event2command = new SparseArray<>();
+        for (String key : command2event.keySet()) {
+            event2command.append(event2command(key), key);
+        }
+    }
 
     public static int event2command(String event) {
         return command2event.get(event).getSecond();

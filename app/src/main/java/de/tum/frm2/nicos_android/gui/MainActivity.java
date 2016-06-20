@@ -1,3 +1,21 @@
+//
+// Copyright (C) 2016 Andreas Schulz <andreas.schulz@frm2.tum.de>
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 US
+
+
 package de.tum.frm2.nicos_android.gui;
 
 import android.app.AlertDialog;
@@ -106,7 +124,8 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         _coarseStepEditText = (EditText) findViewById(R.id.coarseStepEditText);
         _fineStepEditText = (EditText) findViewById(R.id.fineStepEditText);
 
-        TextView.OnEditorActionListener onEditorActionListener = new TextView.OnEditorActionListener() {
+        TextView.OnEditorActionListener onEditorActionListener =
+                new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int actionID, KeyEvent keyEvent) {
                 if (actionID == EditorInfo.IME_ACTION_DONE) {
@@ -265,6 +284,8 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 color = ContextCompat.getColor(this, R.color.colorPrimary);
             }
             else {
+                // It's only deprecated since API level 23.
+                //noinspection deprecation
                 color = getResources().getColor(R.color.colorPrimary);
             }
             alertDialog.show();
@@ -336,12 +357,14 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                         try {
                             Thread.sleep(100);
                         } catch (InterruptedException e) {
+                            return;
                         }
                     }
                     _uiThread.post(new Runnable() {
                         @Override
                         public void run() {
-                            onDeviceSelected(getDeviceByCacheName(previousDeviceName.toLowerCase()));
+                            onDeviceSelected(getDeviceByCacheName(
+                                    previousDeviceName.toLowerCase()));
                         }
                     });
                 }
@@ -360,83 +383,89 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             String fineKey = _uniquePrefix + _currentDevice.getName() + "fine";
             editor.putLong(coarseKey, Double.doubleToRawLongBits(coarse));
             editor.putLong(fineKey, Double.doubleToRawLongBits(fine));
-            editor.commit();
+            editor.apply();
         } catch (Exception e) {
+            // Probably invalid steps
         }
     }
 
     @Override
     public void handleSignal(String signal, Object data, Object args) {
-        if (signal.equals("broken")) {
-            final String error = (String) data;
-            // Connection is broken. Try to disconnect what's left and go back to login screen.
-            NicosClient.getClient().unregisterCallbackHandler(this);
-            NicosClient.getClient().disconnect();
-            if (!_visible) return;
+        switch (signal) {
+            case "broken":
+                final String error = (String) data;
+                // Connection is broken. Try to disconnect what's left and go back to login screen.
+                NicosClient.getClient().unregisterCallbackHandler(this);
+                NicosClient.getClient().disconnect();
+                if (!_visible) return;
 
-            // Activity is still visible, user probably didn't intend to shut down connection.
-            // We display an error.
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    AlertDialog alertDialog;
-                    try {
-                        alertDialog = new AlertDialog.Builder(MainActivity.this).create();
-                        alertDialog.setTitle("Disconnected");
-                        alertDialog.setMessage(error);
-                        alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Okay",
-                                new DialogInterface.OnClickListener() {
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        dialog.dismiss();
-                                        finish();
-                                    }
-                                });
-                        alertDialog.setCancelable(false);
-                        alertDialog.setCanceledOnTouchOutside(false);
-                        alertDialog.show();
-                    }
-                    catch (Exception e) {
-                        try {
-                            finish();
-                        }
-                        catch (Exception e2) {
-                            // User probably quit the application.
-                        }
-                        // Activity isn't running anymore
-                        // (user probably put application in background).
-                    }
-                }
-            });
-        }
-        else if (signal.equals("cache")) {
-            on_client_cache((Object[]) data);
-        }
-        else if (signal.equals("status")) {
-            // data = tuple of (status, linenumber)
-            _current_status = (int) ((Object[]) data)[0];
-        }
-        else if (signal.equals("message")) {
-            final ArrayList msgList = (ArrayList) data;
-            if ((int) msgList.get(2) == NicosMessageLevel.ERROR) {
+                // Activity is still visible, user probably didn't intend to shut down connection.
+                // We display an error.
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
-                        Toast.makeText(getApplicationContext(),
-                                NicosMessageLevel.level2name(NicosMessageLevel.ERROR) + ": " +
-                                        (String) msgList.get(3), Toast.LENGTH_SHORT).show();
+                        AlertDialog alertDialog;
+                        try {
+                            alertDialog = new AlertDialog.Builder(MainActivity.this).create();
+                            alertDialog.setTitle("Disconnected");
+                            alertDialog.setMessage(error);
+                            alertDialog.setButton(AlertDialog.BUTTON_NEGATIVE, "Okay",
+                                    new DialogInterface.OnClickListener() {
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            dialog.dismiss();
+                                            finish();
+                                        }
+                                    });
+                            alertDialog.setCancelable(false);
+                            alertDialog.setCanceledOnTouchOutside(false);
+                            alertDialog.show();
+                        }
+                        catch (Exception e) {
+                            try {
+                                finish();
+                            }
+                            catch (Exception e2) {
+                                // User probably quit the application.
+                            }
+                            // Activity isn't running anymore
+                            // (user probably put application in background).
+                        }
                     }
                 });
-            }
-        }
-        else if (signal.equals("error")) {
-            final String msg = (String) data;
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    Toast.makeText(getApplicationContext(), (String) msg,
-                            Toast.LENGTH_SHORT).show();
+                break;
+
+            case "cache":
+                on_client_cache((Object[]) data);
+                break;
+
+            case "status":
+                // data = tuple of (status, linenumber)
+                _current_status = (int) ((Object[]) data)[0];
+                break;
+
+            case "message":
+                final ArrayList msgList = (ArrayList) data;
+                if ((int) msgList.get(2) == NicosMessageLevel.ERROR) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(getApplicationContext(),
+                                    NicosMessageLevel.level2name(NicosMessageLevel.ERROR) + ": " +
+                                            msgList.get(3), Toast.LENGTH_SHORT).show();
+                        }
+                    });
                 }
-            });
+                break;
+
+            case "error":
+                final String msg = (String) data;
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
+                    }
+                });
+                break;
         }
     }
 
@@ -470,9 +499,14 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             factor = 1;
         }
 
-        double step;
+        Double step = null;
         try {
-            step = Double.parseDouble(editTextToBeParsed.getText().toString());
+            if (editTextToBeParsed != null) {
+                Editable doubleString = editTextToBeParsed.getText();
+                if (doubleString != null) {
+                    step = Double.parseDouble(doubleString.toString());
+                }
+            }
         } catch (Exception e) {
             runOnUiThread(new Runnable() {
                 @Override
@@ -484,9 +518,11 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             return;
         }
 
-        double current = (double) _currentDevice.getValue();
-        double newVal = current + step * factor;
-        exec_command("move(" + _currentDevice.getName() + ", " + String.valueOf(newVal) + ")");
+        if (step != null) {
+            double current = (double) _currentDevice.getValue();
+            double newVal = current + step * factor;
+            exec_command("move(" + _currentDevice.getName() + ", " + String.valueOf(newVal) + ")");
+        }
     }
 
     private void onDeviceSelected(Device device) {
@@ -526,6 +562,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         }
         else {
             // TODO: Implement devices with mapping!
+            return;
         }
 
         _coarseStepLeftButton.setEnabled(true);
@@ -538,8 +575,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
 
     private void on_client_connected() {
         // Query moveables.
-        final ArrayList<String> lowercaseMoveables =
-                (ArrayList<String>) NicosClient.getClient().getDeviceList(
+        final ArrayList lowercaseMoveables = (ArrayList) NicosClient.getClient().getDeviceList(
                         "nicos.core.device.Moveable", true, null, null);
 
         // Ask for current daemon status.
@@ -547,7 +583,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         if (untyped_state == null) {
             return;
         }
-        final HashMap<String, Object> state = (HashMap<String, Object>) untyped_state;
+        final HashMap state = (HashMap) untyped_state;
         Object[] statusTuple = (Object[]) state.get("status");
         _current_status = (int) statusTuple[0];
 
@@ -557,8 +593,9 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             public void run() {
                 synchronized (this) {
                     // Filter device list for moveables.
-                    ArrayList<String> devlist = (ArrayList<String>) state.get("devices");
-                    for (String device : devlist) {
+                    ArrayList devlist = (ArrayList) state.get("devices");
+                    for (Object deviceObject : devlist) {
+                        String device = (String) deviceObject;
                         String cachekey = device.toLowerCase();
                         if (!lowercaseMoveables.contains(cachekey)) {
                             continue;
@@ -581,6 +618,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             }
         };
 
+        //noinspection SynchronizationOnLocalVariableOrMethodParameter
         synchronized (uiAddMoveables) {
             _uiThread.post(uiAddMoveables);
             try {
@@ -592,8 +630,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
 
         // Query parameters.
         for (final Device device : _moveables) {
-            final ArrayList<Object> params = NicosClient.getClient().getDeviceParams(
-                    device.getCacheName());
+            final ArrayList params = NicosClient.getClient().getDeviceParams(device.getCacheName());
             if (params == null) {
                 continue;
             }
@@ -615,6 +652,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 }
             };
 
+            //noinspection SynchronizationOnLocalVariableOrMethodParameter
             synchronized (uiAddParams) {
                 _uiThread.post(uiAddParams);
                 try {
@@ -644,6 +682,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             }
         };
 
+        //noinspection SynchronizationOnLocalVariableOrMethodParameter
         synchronized (uiRemoveDevicesWithoutLimits) {
             _uiThread.post(uiRemoveDevicesWithoutLimits);
             try {
@@ -729,6 +768,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                 }
             };
 
+            //noinspection SynchronizationOnLocalVariableOrMethodParameter
             synchronized (uiChangeValue) {
                 _uiThread.post(uiChangeValue);
                 try {
@@ -794,6 +834,8 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
                         color = ContextCompat.getColor(MainActivity.this, R.color.colorPrimary);
                     }
                     else {
+                        // It's only deprecated since API level 23.
+                        //noinspection deprecation
                         color = getResources().getColor(R.color.colorPrimary);
                     }
                     AlertDialog dlg = builder.create();
@@ -834,52 +876,55 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         final Device curdev = maybeDevice;
         final Object value = data[3];
 
-        if (subkey.equals("status")) {
-            // Cache string.
-            String tuple = (String) value;
-            // cut '(' and ')'
-            tuple = tuple.substring(1, tuple.length() - 1);
-            String[] tupelupel = tuple.split(",");
-            final int status = Integer.valueOf(tupelupel[0]);
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    curdev.setStatus(status);
-                    if (_currentDevice == curdev) {
-                        _currentDeviceStatusImageView.setImageResource(
-                                DeviceStatus.getStatusResource(status));
-                        View currentDeviceView = findViewById(R.id.currentDeviceView);
+        switch (subkey) {
+            case "status":
+                // Cache string.
+                String tuple = (String) value;
+                // cut '(' and ')'
+                tuple = tuple.substring(1, tuple.length() - 1);
+                String[] tupelupel = tuple.split(",");
+                final int status = Integer.valueOf(tupelupel[0]);
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        curdev.setStatus(status);
+                        if (_currentDevice == curdev) {
+                            _currentDeviceStatusImageView.setImageResource(
+                                    DeviceStatus.getStatusResource(status));
+                        }
+                        _devicesAdapter.notifyDataSetChanged();
                     }
-                    _devicesAdapter.notifyDataSetChanged();
-                }
-            });
-        }
-        else if (subkey.equals("value")) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    curdev.setValueFromCache(value.toString());
-                    if (_currentDevice == curdev) {
-                        _currentDeviceValueTextView.setText(
-                                curdev.getFormattedValue());
+                });
+                break;
+
+            case "value":
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        curdev.setValueFromCache(value.toString());
+                        if (_currentDevice == curdev) {
+                            _currentDeviceValueTextView.setText(
+                                    curdev.getFormattedValue());
+                        }
+                        _devicesAdapter.notifyDataSetChanged();
                     }
-                    _devicesAdapter.notifyDataSetChanged();
-                }
-            });
-        }
-        else if (subkey.equals("fmtstr")) {
-            final String fmt = (String) data[3];
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    curdev.addParam("fmtstr", fmt);
-                    if (_currentDevice == curdev) {
-                        _currentDeviceValueTextView.setText(
-                                curdev.getFormattedValue());
+                });
+                break;
+
+            case "fmtstr":
+                final String fmt = (String) data[3];
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        curdev.addParam("fmtstr", fmt);
+                        if (_currentDevice == curdev) {
+                            _currentDeviceValueTextView.setText(
+                                    curdev.getFormattedValue());
+                        }
+                        _devicesAdapter.notifyDataSetChanged();
                     }
-                    _devicesAdapter.notifyDataSetChanged();
-                }
-            });
+                });
+                break;
         }
     }
 }

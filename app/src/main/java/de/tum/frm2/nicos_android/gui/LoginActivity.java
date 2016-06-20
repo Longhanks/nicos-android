@@ -1,3 +1,21 @@
+//
+// Copyright (C) 2016 Andreas Schulz <andreas.schulz@frm2.tum.de>
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 US
+
+
 package de.tum.frm2.nicos_android.gui;
 
 import android.animation.Animator;
@@ -104,14 +122,15 @@ public class LoginActivity extends AppCompatActivity {
         // Parse data from editTexts.
         String hostname = editTextHostname.getText().toString();
         String portString = editTextPort.getText().toString();
-        int port = -1;
+        Integer port;
         try {
             // Despite the textEdit only allowing numeral input, this might fail when the user has
             // entered an empty string.
             port = Integer.valueOf(portString);
+        } catch (NumberFormatException e) {
+            port = -1;
         }
-        catch (NumberFormatException e) {
-        }
+
         String username = editTextUsername.getText().toString();
         String password = editTextPassword.getText().toString();
 
@@ -152,7 +171,7 @@ public class LoginActivity extends AppCompatActivity {
         } else {
             // Create connection data object for NicosClient.
             ConnectionData connData = new ConnectionData(hostname,
-                    Integer.valueOf(port), username, password.toCharArray(), false);
+                    port, username, password.toCharArray(), false);
 
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.

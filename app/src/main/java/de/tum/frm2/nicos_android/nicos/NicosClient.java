@@ -1,3 +1,21 @@
+//
+// Copyright (C) 2016 Andreas Schulz <andreas.schulz@frm2.tum.de>
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 2 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 US
+
+
 package de.tum.frm2.nicos_android.nicos;
 
 import android.util.Base64;
@@ -11,7 +29,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 
 import org.spongycastle.asn1.ASN1InputStream;
 import org.spongycastle.asn1.ASN1Primitive;
-import org.spongycastle.asn1.x509.RSAPublicKeyStructure;
+import org.spongycastle.asn1.pkcs.RSAPublicKey;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -104,14 +122,12 @@ public class NicosClient {
 
     // The event socket and its streams
     private Socket eventSocket;
-    private OutputStream eventSocketOut;
     private InputStream eventSocketIn;
 
     // The list of handlers that receive the signal() calls
     private List<NicosCallbackHandler> callbackHandlers;
 
     // constants
-    private final static int BUFSIZE = 8192;
     private final static int TIMEOUT = 30000;
 
     // Placeholder object
@@ -129,7 +145,10 @@ public class NicosClient {
         last_reqno = null;
         viewonly = true;
         user_level = -1;
-        client_id = getMD5().digest(getUniqueID().getBytes());
+        MessageDigest md5 = getMD5();
+        if (md5 != null) {
+            client_id = getMD5().digest(getUniqueID().getBytes());
+        }
 
         // Add debug printer for signals.
         // callbackHandlers.add(new SignalDebugPrinter());
@@ -283,7 +302,11 @@ public class NicosClient {
                 // Cannot happen.
             }
             try {
-                cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+                if (cipher != null) {
+                    cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+                } else {
+                    throw new InvalidKeyException();
+                }
             }
             catch (InvalidKeyException e) {
                 throw new RuntimeException("The server's RSA key is invalid or incompatible.");
@@ -309,7 +332,7 @@ public class NicosClient {
                     DigestUtils.md5(String.valueOf(password))));
         }
 
-        HashMap<String, String> credentials = new HashMap<String, String>();
+        HashMap<String, String> credentials = new HashMap<>();
         credentials.put("login", connData.getUser());
         credentials.put("passwd", encryptedPassword);
         credentials.put("display", "");
@@ -335,7 +358,7 @@ public class NicosClient {
         eventSocket = new Socket();
         try {
             eventSocket.connect(sockaddr);
-            eventSocketOut = eventSocket.getOutputStream();
+            OutputStream eventSocketOut = eventSocket.getOutputStream();
             eventSocketIn = eventSocket.getInputStream();
             eventSocketOut.write(client_id);
         } catch (IOException e) {
@@ -365,6 +388,7 @@ public class NicosClient {
                 // receive STX (1 byte) + eventcode (2) + length (4)
                 byte[] start = new byte[7];
                 try {
+                    //noinspection ResultOfMethodCallIgnored
                     din.read(start);
                 } catch (IOException e) {
                     if (!disconnecting) {
@@ -501,7 +525,7 @@ public class NicosClient {
         }
         if (start == daemon.ACK) {
             // ACK == executed ok, no more information follows
-            return new TupleOfTwo<Byte, Object>(start, null);
+            return new TupleOfTwo<>(start, null);
         }
 
         if (start != daemon.NAK && start != daemon.STX) {
@@ -533,7 +557,7 @@ public class NicosClient {
             // result stays at null.
             handle_error(e);
         }
-        return new TupleOfTwo<Byte, Object>(start, result);
+        return new TupleOfTwo<>(start, result);
     }
 
     public boolean tell(String command, Object arguments) {
@@ -547,10 +571,7 @@ public class NicosClient {
         Object[] args = {arguments};
 
         if (arguments == null) {
-            // Oh Java.
-            // "array initializer not allowed here" for args = {}...
-            Object[] _empty = {};
-            args = _empty;
+            args = new Object[]{};
         }
 
         if (socket == null) {
@@ -596,8 +617,7 @@ public class NicosClient {
             return null;
         }
         if (args == null) {
-            Object[] _ = {};
-            args = _;
+            args = new Object[]{};
         }
 
         try {
@@ -625,10 +645,12 @@ public class NicosClient {
         return last_reqno;
     }
 
+    @SuppressWarnings("unused")
     public Object eval(String expr) throws PythonException {
         return eval(expr, Ellipsis, false);
     }
 
+    @SuppressWarnings("unused")
     public Object eval(String expr, boolean stringify) throws PythonException {
         return eval(expr, Ellipsis, stringify);
     }
@@ -675,8 +697,8 @@ public class NicosClient {
             query += " and " + special_clause;
         }
         query += ")";
-        ArrayList<Object> result = (ArrayList<Object>) eval(query, new ArrayList<Object>());
-        ArrayList<String> deviceList = new ArrayList<String>();
+        ArrayList result = (ArrayList) eval(query, new ArrayList<>());
+        ArrayList<String> deviceList = new ArrayList<>();
         for (Object device : result) {
             deviceList.add(((String) device).toLowerCase());
         }
@@ -699,12 +721,12 @@ public class NicosClient {
         return eval(String.format("session.getDevice('%s').status()", devname), null);
     }
 
-    public ArrayList<Object> getDeviceParams(String devname) {
-        ArrayList<Object> params;
+    public ArrayList getDeviceParams(String devname) {
+        ArrayList params;
         Object[] tuple = new Object[] {devname.toLowerCase() + "/"};
         Object devkeys = ask("getcachekeys", tuple);
         if (devkeys != null) {
-            params = (ArrayList<Object>) devkeys;
+            params = (ArrayList) devkeys;
         }
         else {
             params = null;
@@ -734,14 +756,19 @@ public class NicosClient {
         keyString = keyString.replace("\n", "");
 
         ASN1InputStream in = new ASN1InputStream(Base64.decode(keyString, Base64.NO_WRAP));
-        ASN1Primitive obj = null;
+        ASN1Primitive obj;
         try {
             obj = in.readObject();
         } catch (IOException e) {
+            return null;
         }
-        RSAPublicKeyStructure keyStructure = RSAPublicKeyStructure.getInstance(obj);
-        RSAPublicKeySpec keySpec = new RSAPublicKeySpec(keyStructure.getModulus(),
-                keyStructure.getPublicExponent());
+
+        RSAPublicKey key = RSAPublicKey.getInstance(obj);
+        RSAPublicKeySpec keySpec = null;
+        if (key != null) {
+            keySpec = new RSAPublicKeySpec(key.getModulus(),
+                    key.getPublicExponent());
+        }
 
         KeyFactory keyFactory = null;
         try {
@@ -753,7 +780,9 @@ public class NicosClient {
 
         PublicKey pubkey = null;
         try {
-            pubkey = keyFactory.generatePublic(keySpec);
+            if (keyFactory != null) {
+                pubkey = keyFactory.generatePublic(keySpec);
+            }
         }
         catch (InvalidKeySpecException e) {
             // Cannot (SHOULD NOT) happen.
@@ -769,14 +798,15 @@ public class NicosClient {
         return nicosBanner;
     }
 
+    @SuppressWarnings("unused")
     public int getUserLevel() {
         return user_level;
     }
 
     public String getUniqueID() {
         long millis = System.currentTimeMillis();
-        long seconds = millis / 1000l;
-        long twoDigitsAfterComma = (millis - seconds * 1000l) / 10;
+        long seconds = millis / 1000L;
+        long twoDigitsAfterComma = (millis - seconds * 1000L) / 10;
         String time = String.valueOf(seconds) + "." + String.valueOf(twoDigitsAfterComma);
         return time + String.valueOf(android.os.Process.myPid());
     }
