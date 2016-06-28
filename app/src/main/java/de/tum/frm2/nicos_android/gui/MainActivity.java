@@ -518,8 +518,17 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             return;
         }
 
-        if (step != null) {
-            double current = (double) _currentDevice.getValue();
+        if (step != null &&  _currentDevice.getValue() != null) {
+            Double current;
+            try {
+                current = (double) _currentDevice.getValue();
+            } catch (ClassCastException e) {
+                try {
+                    current = Double.parseDouble(_currentDevice.getValue().toString());
+                } catch (NumberFormatException e1) {
+                    return;
+                }
+            }
             double newVal = current + step * factor;
             exec_command("move(" + _currentDevice.getName() + ", " + String.valueOf(newVal) + ")");
         }
@@ -716,6 +725,10 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             String pyclass;
             final Class valueclass;
 
+            if (valuetype == null) {
+                // Response timed out
+                continue;
+            }
             if (valuetype.getClass() == ClassDictConstructor.class) {
                 // Java ô.o
                 Object[] o = {};

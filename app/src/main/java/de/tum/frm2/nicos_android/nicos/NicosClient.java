@@ -542,22 +542,26 @@ public class NicosClient {
         }
         // Cannot concat these two try blocks: We need length before allocating msg.
         // And msg needs to be declared outside of try block to be accessible afterwards.
-        byte[] msg = new byte[length];
         try {
-            din.readFully(msg, 0, length);
-        } catch (IOException e) {
-            throw new ProtocolError("connection broken");
-        }
+            byte[] msg = new byte[length];
+            try {
+                din.readFully(msg, 0, length);
+            } catch (IOException e) {
+                throw new ProtocolError("connection broken");
+            }
 
-        Unpickler unpickler = new Unpickler();
-        Object result = null;
-        try {
-            result = unpickler.loads(msg);
-        } catch (Exception e) {
-            // result stays at null.
-            handle_error(e);
+            Unpickler unpickler = new Unpickler();
+            Object result = null;
+            try {
+                result = unpickler.loads(msg);
+            } catch (Exception e) {
+                // result stays at null.
+                handle_error(e);
+            }
+            return new TupleOfTwo<>(start, result);
+        } catch (OutOfMemoryError e) {
+            throw new ProtocolError("bad response");
         }
-        return new TupleOfTwo<>(start, result);
     }
 
     public boolean tell(String command, Object arguments) {

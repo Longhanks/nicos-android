@@ -22,8 +22,10 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.support.v7.app.AppCompatActivity;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -33,9 +35,14 @@ import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+
+import java.util.HashSet;
+import java.util.Set;
 
 import de.tum.frm2.nicos_android.nicos.ConnectionData;
 import de.tum.frm2.nicos_android.util.NicosCallbackHandler;
@@ -51,12 +58,13 @@ public class LoginActivity extends AppCompatActivity {
     // If authTask is not null: An attempt to login is currently running.
     private UserLoginTask authTask = null;
 
-    private EditText editTextHostname;
+    private AutoCompleteTextView editTextHostname;
     private EditText editTextPort;
     private EditText editTextUsername;
     private EditText editTextPassword;
     private View mProgressView;
     private View mLoginFormView;
+    private Set<String> hostnames;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -64,7 +72,7 @@ public class LoginActivity extends AppCompatActivity {
         setContentView(R.layout.activity_login);
         // Set up the login form.
 
-        editTextHostname = (EditText) findViewById(R.id.textedit_hostname);
+        editTextHostname = (AutoCompleteTextView) findViewById(R.id.textedit_hostname);
         editTextPort = (EditText) findViewById(R.id.textedit_port);
         editTextUsername = (EditText) findViewById(R.id.textedit_username);
         editTextPassword = (EditText) findViewById(R.id.textedit_password);
@@ -91,6 +99,29 @@ public class LoginActivity extends AppCompatActivity {
 
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
+
+        SharedPreferences prefs = getPreferences(Context.MODE_PRIVATE);
+        // Thanks for not handing me a copy, Java
+        hostnames = new HashSet<>(prefs.getStringSet("hostnames", new HashSet<String>()));
+
+        reloadAdapter();
+        editTextHostname.setOnFocusChangeListener(new View.OnFocusChangeListener() {
+            @Override
+            public void onFocusChange(View view, boolean hasFocus) {
+                if (hasFocus) {
+                    editTextHostname.showDropDown();
+                } else {
+                    editTextHostname.dismissDropDown();
+                }
+            }
+        });
+        editTextHostname.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                editTextHostname.showDropDown();
+            }
+        });
+        editTextHostname.setThreshold(1);
     }
 
     @Override
@@ -181,6 +212,13 @@ public class LoginActivity extends AppCompatActivity {
             authTask = new UserLoginTask(this, connData);
             authTask.execute((Void) null);
         }
+    }
+
+    private void reloadAdapter() {
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_dropdown_item_1line,
+                hostnames.toArray(new String[hostnames.size()]));
+        editTextHostname.setAdapter(adapter);
     }
 
     // BEGIN * from Android Login Template *
@@ -282,6 +320,12 @@ public class LoginActivity extends AppCompatActivity {
             if (success) {
                 // Server accepted our credentials. Start MainActivity and provide it with the
                 // connection data that worked.
+
+                SharedPreferences.Editor editor = getPreferences(Context.MODE_PRIVATE).edit();
+                hostnames.add(connData.getHost());
+                editor.putStringSet("hostnames", hostnames);
+                editor.apply();
+                reloadAdapter();
                 // This 'Intent' construct is essentially Android's way to carry over currently
                 // existing data to our new Activity.
                 Intent intent = new Intent(loginActivity, MainActivity.class);
