@@ -31,5 +31,14 @@
 
     <!-- Description for Status LED -->
     <string name="status_led">Status LED</string>
+    <string name="title_activity_settings">Settings</string>
+
+    <!-- Strings related to Settings -->
+
+    <!-- Example General settings -->
+    <string name="pref_header_general">General</string>
+
+    <string name="pref_title_jk_design">Enable JK Design</string>
+    <string name="pref_description_jk_design">An alternative layout with big buttons</string>
 
 </resources>

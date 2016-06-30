@@ -269,27 +269,8 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         int id = item.getItemId();
 
         if (id == R.id.action_settings) {
-            AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this).create();
-            alertDialog.setTitle("Not yet implemented");
-            alertDialog.setMessage("The settings dialog wasn't implemented yet.");
-            alertDialog.setButton(AlertDialog.BUTTON_NEUTRAL, "Okay",
-                    new DialogInterface.OnClickListener() {
-                        public void onClick(DialogInterface dialog, int which) {
-                            dialog.dismiss();
-                        }
-                    });
-            int version = Build.VERSION.SDK_INT;
-            int color;
-            if (version >= 23) {
-                color = ContextCompat.getColor(this, R.color.colorPrimary);
-            }
-            else {
-                // It's only deprecated since API level 23.
-                //noinspection deprecation
-                color = getResources().getColor(R.color.colorPrimary);
-            }
-            alertDialog.show();
-            alertDialog.getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(color);
+            Intent intent = new Intent(this, SettingsActivity.class);
+            startActivity(intent);
             return true;
         }
 
