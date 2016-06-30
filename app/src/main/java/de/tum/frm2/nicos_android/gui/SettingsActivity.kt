@@ -3,7 +3,6 @@ package de.tum.frm2.nicos_android.gui
 
 import android.annotation.TargetApi
 import android.content.Context
-import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
@@ -70,42 +69,15 @@ class SettingsActivity : AppCompatPreferenceActivity() {
         }
     }
 
-    // TODO do fancy things with this
+    // Kotlin's equivalent to static methods
     companion object {
-        /**
-         * A preference value change listener that updates the preference's summary
-         * to reflect its new value.
-         */
-        private val sBindPreferenceSummaryToValueListener = Preference.OnPreferenceChangeListener { preference, value ->
-            preference.summary = value.toString()
-            true
-        }
-
         /**
          * Helper method to determine if the device has an extra-large screen. For
          * example, 10" tablets are extra-large.
          */
         private fun isXLargeTablet(context: Context): Boolean {
-            return context.resources.configuration.screenLayout and Configuration.SCREENLAYOUT_SIZE_MASK >= Configuration.SCREENLAYOUT_SIZE_XLARGE
-        }
-
-        /**
-         * Binds a preference's summary to its value. More specifically, when the
-         * preference's value is changed, its summary (line of text below the
-         * preference title) is updated to reflect the value. The summary is also
-         * immediately updated upon calling this method. The exact display format is
-         * dependent on the type of preference.
-
-         * @see .sBindPreferenceSummaryToValueListener
-         */
-        private fun bindPreferenceSummaryToValue(preference: Preference) {
-            // Set the listener to watch for value changes.
-            preference.onPreferenceChangeListener = sBindPreferenceSummaryToValueListener
-
-            // Trigger the listener immediately with the preference's
-            // current value.
-            sBindPreferenceSummaryToValueListener.onPreferenceChange(preference,
-                    PreferenceManager.getDefaultSharedPreferences(preference.context).getString(preference.key, ""))
+            return context.resources.configuration.screenLayout and
+                    Configuration.SCREENLAYOUT_SIZE_MASK >= Configuration.SCREENLAYOUT_SIZE_XLARGE
         }
     }
 }

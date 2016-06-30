@@ -28,6 +28,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
+import android.preference.PreferenceManager;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -317,6 +318,9 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
         _slidingUpPanelLayout.setPanelState(SlidingUpPanelLayout.PanelState.COLLAPSED);
         _slidingUpPanelLayout.setEnabled(false);
         _visible = true;
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+        System.out.print("Use JK design: ");
+        System.out.println(prefs.getBoolean(getResources().getString(R.string.key_jk_design_switch), false));
     }
 
     @Override
@@ -356,7 +360,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
 
     private void saveSteps() {
         // Try saving the steps, if they are valid. Else, just ignore saving.
-        SharedPreferences.Editor editor = getPreferences(Context.MODE_PRIVATE).edit();
+        SharedPreferences.Editor editor = PreferenceManager.getDefaultSharedPreferences(this).edit();
         try {
             double coarse = Double.parseDouble(_coarseStepEditText.getText().toString());
             double fine = Double.parseDouble(_fineStepEditText.getText().toString());
@@ -535,7 +539,7 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
             double max = (double) o_max;
 
             // Try to read a value from the preferences.
-            SharedPreferences prefs = getPreferences(Context.MODE_PRIVATE);
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
             String coarseKey = _uniquePrefix + _currentDevice.getName() + "coarse";
             String fineKey = _uniquePrefix + _currentDevice.getName() + "fine";
             if (prefs.contains(coarseKey) && prefs.contains(fineKey)) {

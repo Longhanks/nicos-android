@@ -34,6 +34,7 @@
     <string name="title_activity_settings">Settings</string>
 
     <!-- Strings related to Settings -->
+    <string name="key_jk_design_switch">JK_DESIGN_SWITCH</string>
 
     <!-- Example General settings -->
     <string name="pref_header_general">General</string>

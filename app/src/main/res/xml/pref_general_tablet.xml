@@ -2,7 +2,7 @@
 
     <SwitchPreference
         android:defaultValue="false"
-        android:key="jk_design_switch"
+        android:key="@string/key_jk_design_switch"
         android:summary="@string/pref_description_jk_design"
         android:title="@string/pref_title_jk_design" />
 
