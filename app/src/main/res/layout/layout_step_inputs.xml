@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+    <android.support.design.widget.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/coarseStepTextInputLayout">
+
+        <EditText
+            android:id="@+id/coarseStepEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/prompt_coarse_steps"
+            android:inputType="number|numberSigned|numberDecimal"
+            android:maxLines="1"
+            android:nextFocusDown="@+id/fineStepEditText"
+            android:singleLine="true" />
+
+    </android.support.design.widget.TextInputLayout>
+
+    <android.support.design.widget.TextInputLayout
+        android:layout_below="@+id/coarseStepTextInputLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/fineStepTextInputLayout">
+
+        <EditText
+            android:id="@+id/fineStepEditText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/prompt_fine_steps"
+            android:maxLines="1"
+            android:singleLine="true"
+            android:inputType="number|numberSigned|numberDecimal" />
+
+    </android.support.design.widget.TextInputLayout>
+
+</RelativeLayout>

@@ -48,6 +48,7 @@ import android.widget.ListView;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.ViewSwitcher;
 
 import com.sothree.slidinguppanel.SlidingUpPanelLayout;
 
@@ -163,9 +164,6 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
 
         // Reference to the bottom slider panel + initial height.
         _slidingUpPanelLayout = (SlidingUpPanelLayout) findViewById(R.id.sliding_layout);
-        RelativeLayout currentDeviceLayout = (RelativeLayout) findViewById(R.id.currentDeviceView);
-        currentDeviceLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        _slidingUpPanelLayout.setPanelHeight(currentDeviceLayout.getMeasuredHeight());
 
         // Change behavior of Panel when state changes.
         _slidingUpPanelLayout.addPanelSlideListener(new SlidingUpPanelLayout.PanelSlideListener() {
@@ -314,13 +312,39 @@ public class MainActivity extends AppCompatActivity implements NicosCallbackHand
     @Override
     protected void onResume() {
         super.onResume();
-        _slidingUpPanelLayout.setEnabled(true);
-        _slidingUpPanelLayout.setPanelState(SlidingUpPanelLayout.PanelState.COLLAPSED);
-        _slidingUpPanelLayout.setEnabled(false);
         _visible = true;
+
+        // Initialize design for buttons.
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-        System.out.print("Use JK design: ");
-        System.out.println(prefs.getBoolean(getResources().getString(R.string.key_jk_design_switch), false));
+        boolean useJK = prefs.getBoolean(getResources().getString(R.string.key_jk_design_switch),
+                false);
+        ViewSwitcher switcher = (ViewSwitcher) findViewById(R.id.viewSwitch);
+        if (useJK) {
+            if (switcher.getCurrentView() == findViewById(R.id.layoutSmallButtons)) {
+                switcher.showNext();
+                setPanelHeight(false);
+            }
+        } else {
+            if (switcher.getCurrentView() == findViewById(R.id.layoutBigButtons)) {
+                switcher.showNext();
+                setPanelHeight(true);
+            }
+        }
+    }
+
+    private void setPanelHeight(boolean withButtonsVisible) {
+        int panelHeight = 0;
+        RelativeLayout currentDeviceLayout = (RelativeLayout) findViewById(
+                R.id.currentDeviceView);
+        currentDeviceLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        panelHeight += currentDeviceLayout.getMeasuredHeight();
+        if (withButtonsVisible) {
+            RelativeLayout smallButtonsLayout = (RelativeLayout) findViewById(
+                    R.id.layoutSmallButtons);
+            smallButtonsLayout.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+            panelHeight += smallButtonsLayout.getMeasuredHeight();
+        }
+        _slidingUpPanelLayout.setPanelHeight(panelHeight);
     }
 
     @Override

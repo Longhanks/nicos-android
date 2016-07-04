@@ -1,141 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout
+<LinearLayout
+    android:orientation="vertical"
     xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content" >
+    android:layout_height="wrap_content"
+    android:layout_weight="1">
 
     <include layout="@layout/sample_device_view" android:id="@+id/currentDeviceView"/>
 
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:layout_below="@+id/currentDeviceView"
-        android:layout_above="@+id/relativeLayout">
+    <ViewSwitcher
+        android:id="@+id/viewSwitch"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:measureAllChildren="false">
+        <include layout="@layout/layout_small_buttons"
+            android:id="@+id/layoutSmallButtons"/>
+        <include layout="@layout/layout_big_buttons"
+            android:id="@+id/layoutBigButtons"/>
 
-        <LinearLayout
-            android:orientation="vertical"
-            android:layout_width="fill_parent"
-            android:layout_height="fill_parent"
-            android:layout_below="@+id/currentDeviceView"
-            android:baselineAligned="false"
-            android:id="@+id/buttonsLayout">
+    </ViewSwitcher>
 
-            <LinearLayout
-                android:orientation="horizontal"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:baselineAligned="false"
-                android:id="@+id/speedButtonsLayout"
-                android:layout_gravity="top"
-                android:layout_weight="1">
+    <include layout="@layout/layout_step_inputs" android:id="@+id/stepsLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
 
-                <LinearLayout
-                    android:orientation="vertical"
-                    android:layout_width="match_parent"
-                    android:layout_height="fill_parent"
-                    android:layout_gravity="left"
-                    android:layout_weight="1"
-                    android:id="@+id/leftSpeedButtonsLayout">
-
-                    <Button
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:text="@string/btn_coarse_left"
-                        android:id="@+id/coarseStepLeftButton"
-                        android:layout_gravity="top"
-                        android:layout_weight="1" />
-
-                    <Button
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:text="@string/btn_fine_left"
-                        android:id="@+id/fineStepLeftButton"
-                        android:layout_weight="1"
-                        android:layout_gravity="bottom" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:orientation="vertical"
-                    android:layout_width="match_parent"
-                    android:layout_height="fill_parent"
-                    android:layout_gravity="right"
-                    android:layout_weight="1"
-                    android:id="@+id/rightSpeedButtonsLayout">
-
-                    <Button
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:text="@string/btn_coarse_right"
-                        android:id="@+id/coarseStepRightButton"
-                        android:layout_gravity="top"
-                        android:layout_weight="1" />
-
-                    <Button
-                        android:layout_width="match_parent"
-                        android:layout_height="match_parent"
-                        android:text="@string/btn_fine_right"
-                        android:id="@+id/fineStepRightButton"
-                        android:layout_gravity="bottom"
-                        android:layout_weight="1" />
-                </LinearLayout>
-
-            </LinearLayout>
-
-            <Button
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:text="@string/btn_stop"
-                android:id="@+id/stopButton"
-                android:layout_gravity="bottom"
-                android:layout_weight="1" />
-        </LinearLayout>
-    </RelativeLayout>
-
-
-    <RelativeLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_centerHorizontal="true"
-        android:layout_below="@+id/buttonsLayout"
-        android:layout_alignParentBottom="true"
-        android:id="@+id/relativeLayout">
-
-        <android.support.design.widget.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:id="@+id/coarseStepTextInputLayout">
-
-            <EditText
-                android:id="@+id/coarseStepEditText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/prompt_coarse_steps"
-                android:inputType="number|numberSigned|numberDecimal"
-                android:maxLines="1"
-                android:nextFocusDown="@+id/fineStepEditText"
-                android:singleLine="true" />
-
-        </android.support.design.widget.TextInputLayout>
-
-        <android.support.design.widget.TextInputLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_below="@+id/coarseStepTextInputLayout"
-            android:layout_alignParentStart="true"
-            android:id="@+id/fineStepTextInputLayout">
-
-            <EditText
-                android:id="@+id/fineStepEditText"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:hint="@string/prompt_fine_steps"
-                android:maxLines="1"
-                android:singleLine="true"
-                android:inputType="number|numberSigned|numberDecimal" />
-
-        </android.support.design.widget.TextInputLayout>
-
-    </RelativeLayout>
-
-
-</RelativeLayout>
+</LinearLayout>
